@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brandGreen">#FF1E7A5F</color>
+    <color name="brandGreenDeep">#FF14513F</color>
+    <color name="accentAmber">#FFE8A24B</color>
+    <color name="splashBackground">#FF1E7A5F</color>
+    <!-- Adaptive icon 背景色 -->
+    <color name="ic_launcher_background">#FF1E7A5F</color>
+</resources>

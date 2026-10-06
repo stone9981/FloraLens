@@ -1,0 +1,9 @@
+# 复制为 key.properties 后填入你自己的签名信息。
+# 生成方式（JDK 自带的 keytool）：
+# keytool -genkeypair -v -keystore keystore/floralens.jks -keyalg RSA \
+#   -keysize 2048 -validity 10000 -alias floralens \
+#   -dname "CN=FloraLens, OU=Mobile, O=FloraLens, L=Shenzhen, ST=Guangdong, C=CN"
+storeFile=../keystore/your-keystore.jks
+storePassword=your-store-password
+keyAlias=your-key-alias
+keyPassword=your-key-password

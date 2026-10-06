@@ -1,0 +1,644 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/constants.dart';
+import '../../core/theme.dart';
+import '../../data/local/settings_store.dart';
+import '../../data/models/history_item.dart';
+import '../../data/models/plant.dart';
+import '../../data/models/plant_profile.dart';
+import '../../providers/identification_provider.dart';
+import '../../widgets/common.dart';
+import 'share_card_sheet.dart';
+import 'card_templates.dart';
+import 'manual_pick_sheet.dart';
+
+/// 结果页参数：一张本地图片路径，以及它的来源。
+class ResultPageArgs {
+  const ResultPageArgs({
+    required this.imagePath,
+    this.source = IdentifySource.camera,
+  });
+
+  final String imagePath;
+  final IdentifySource source;
+}
+
+/// 识别结果页：展示品种、档案，并提供出卡片入口。
+class ResultPage extends ConsumerStatefulWidget {
+  const ResultPage({super.key, required this.args});
+
+  final ResultPageArgs args;
+
+  @override
+  ConsumerState<ResultPage> createState() => _ResultPageState();
+}
+
+class _ResultPageState extends ConsumerState<ResultPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = ref.read(identificationProvider);
+      if (state.imagePath != widget.args.imagePath ||
+          state.phase == IdentifyPhase.idle) {
+        ref.read(identificationProvider.notifier).identify(
+              widget.args.imagePath,
+              source: widget.args.source,
+            );
+      }
+    });
+  }
+
+  void _openCard(IdentifyState state) {
+    final candidate = state.top;
+    final id = state.historyId;
+    if (candidate == null || id == null) return;
+    final settings = ref.read(settingsProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ShareCardSheet(
+        historyId: id,
+        data: ShareCardData(
+          imagePath: state.imagePath ?? widget.args.imagePath,
+          candidate: candidate,
+          profile: state.profile ??
+              PlantProfile.offline(
+                scientificName: candidate.scientificName,
+                title: candidate.displayName,
+              ),
+          watermark: settings.watermark,
+          date: DateTime.now(),
+        ),
+      ),
+    );
+  }
+
+  void _openManualPick() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ManualPickSheet(
+        current: ref.read(identificationProvider).top,
+        onPicked: (candidate) {
+          Navigator.of(context).pop();
+          ref
+              .read(identificationProvider.notifier)
+              .applyCandidate(candidate);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(identificationProvider);
+    final imagePath = state.imagePath ?? widget.args.imagePath;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        title: Text(state.phase == IdentifyPhase.success
+            ? (state.profile?.title ?? '识别结果')
+            : AppStrings.identifying),
+      ),
+      body: SafeArea(
+        child: switch (state.phase) {
+          IdentifyPhase.idle || IdentifyPhase.identifying => _Progress(
+              message: AppStrings.identifying,
+              hint: AppStrings.identifyingHint,
+              imagePath: imagePath,
+            ),
+          IdentifyPhase.enriching => _Progress(
+              message: AppStrings.enriching,
+              hint: AppStrings.enrichingHint,
+              imagePath: imagePath,
+            ),
+          IdentifyPhase.failure => _Failure(
+              message: state.errorMessage ?? AppStrings.unknownError,
+              imagePath: imagePath,
+              onRetry: () => ref
+                  .read(identificationProvider.notifier)
+                  .identify(
+                    widget.args.imagePath,
+                    source: widget.args.source,
+                  ),
+              onManual: _openManualPick,
+            ),
+          IdentifyPhase.success => _Success(
+              state: state,
+              imagePath: imagePath,
+              onCard: () => _openCard(state),
+              onRegenerate: () =>
+                  ref.read(identificationProvider.notifier).regenerateProfile(),
+              onManual: _openManualPick,
+            ),
+        },
+      ),
+    );
+  }
+}
+
+class _Progress extends StatelessWidget {
+  const _Progress({
+    required this.message,
+    required this.hint,
+    required this.imagePath,
+  });
+
+  final String message;
+  final String hint;
+  final String imagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: <Widget>[
+        const Spacer(),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          child: LocalImage(
+            path: imagePath,
+            width: MediaQuery.of(context).size.width - 72,
+            height: 280,
+            radius: AppTheme.radiusLg,
+          ),
+        ),
+        const SizedBox(height: 28),
+        const SizedBox(
+          width: 26,
+          height: 26,
+          child: CircularProgressIndicator(strokeWidth: 2.6),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          message,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Text(hint, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+        const Spacer(),
+      ],
+    );
+  }
+}
+
+class _Failure extends StatelessWidget {
+  const _Failure({
+    required this.message,
+    required this.imagePath,
+    required this.onRetry,
+    required this.onManual,
+  });
+
+  final String message;
+  final String imagePath;
+  final VoidCallback onRetry;
+  final VoidCallback onManual;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: <Widget>[
+          LocalImage(
+            path: imagePath,
+            height: 220,
+            width: double.infinity,
+            radius: AppTheme.radiusLg,
+          ),
+          const SizedBox(height: 20),
+          ErrorBanner(message: message, onRetry: onRetry),
+          const SizedBox(height: 14),
+          const Text(
+            AppStrings.resultUnknownHint,
+            style: TextStyle(fontSize: 12.5, height: 1.6),
+          ),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            label: AppStrings.manualSearch,
+            icon: Icons.search_rounded,
+            outlined: true,
+            onPressed: onManual,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Success extends StatelessWidget {
+  const _Success({
+    required this.state,
+    required this.imagePath,
+    required this.onCard,
+    required this.onRegenerate,
+    required this.onManual,
+  });
+
+  final IdentifyState state;
+  final String imagePath;
+  final VoidCallback onCard;
+  final VoidCallback onRegenerate;
+  final VoidCallback onManual;
+
+  @override
+  Widget build(BuildContext context) {
+    final candidate = state.top as PlantCandidate;
+    final profile = state.profile;
+    final result = state.result;
+    final note = result?.fallbackNote;
+    final revalidated = result?.wasRevalidated ?? false;
+
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                child: LocalImage(
+                  path: imagePath,
+                  height: 250,
+                  width: double.infinity,
+                  radius: AppTheme.radiusLg,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _TitleBlock(candidate: candidate, profile: profile),
+              const SizedBox(height: 14),
+              _MetaRow(candidate: candidate, profile: profile),
+              if (state.profileFromCache)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: TagChip('离线资料', icon: Icons.cloud_off_outlined),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: TagChip(
+                  '已存入我的记录 · ${state.source.label}',
+                  icon: Icons.bookmark_outline_rounded,
+                ),
+              ),
+              if (note != null && note.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 12),
+                _FallbackBanner(
+                  note: note,
+                  revalidated: revalidated,
+                  confirmedLabel: result?.confirmedBy?.label,
+                  uncertain: candidate.confidencePercent < 60,
+                ),
+              ],
+              if (profile != null && profile.summary.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 18),
+                SectionTitle(AppStrings.storyLabel),
+                Text(
+                  profile.story.isNotEmpty ? profile.story : profile.summary,
+                  style: const TextStyle(fontSize: 14, height: 1.85),
+                ),
+              ],
+              if (profile != null && profile.careTips.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 18),
+                SectionTitle(AppStrings.careLabel),
+                ...profile.careTips.map(
+                  (tip) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Padding(
+                          padding: EdgeInsets.only(top: 6),
+                          child: Icon(Icons.circle, size: 5,
+                              color: AppTheme.brandGreen),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            tip,
+                            style: const TextStyle(fontSize: 13.5, height: 1.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (profile != null && profile.tags.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: profile.tags.map((t) => TagChip(t)).toList(),
+                ),
+              ],
+              if (state.result != null &&
+                  state.result!.candidates.length > 1) ...<Widget>[
+                const SizedBox(height: 20),
+                SectionTitle(AppStrings.similarLabel),
+                _SimilarList(
+                  candidates: state.result!.candidates.skip(1).take(4).toList(),
+                ),
+              ],
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+        _BottomBar(
+          onCard: onCard,
+          onRegenerate: onRegenerate,
+          onManual: onManual,
+        ),
+      ],
+    );
+  }
+}
+
+class _TitleBlock extends StatelessWidget {
+  const _TitleBlock({required this.candidate, required this.profile});
+
+  final PlantCandidate candidate;
+  final PlantProfile? profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final title =
+        (profile?.title.isNotEmpty ?? false) ? profile!.title : candidate.displayName;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${AppStrings.confidenceLabel} ${candidate.confidencePercent}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (candidate.scientificName.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              candidate.scientificName,
+              style: TextStyle(
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// 混合策略提示条：说明这次为什么换了引擎、或为什么结果不确定。
+class _FallbackBanner extends StatelessWidget {
+  const _FallbackBanner({
+    required this.note,
+    required this.revalidated,
+    required this.uncertain,
+    this.confirmedLabel,
+  });
+
+  final String note;
+  final bool revalidated;
+  final bool uncertain;
+  final String? confirmedLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final tone = revalidated ? scheme.primary : scheme.tertiary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                revalidated
+                    ? Icons.verified_outlined
+                    : Icons.help_outline_rounded,
+                size: 15,
+                color: tone,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                revalidated ? '已交叉复核' : '识别存疑',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: tone,
+                ),
+              ),
+              if (revalidated && confirmedLabel != null) ...<Widget>[
+                const SizedBox(width: 6),
+                Text(
+                  '· $confirmedLabel',
+                  style: TextStyle(fontSize: 12, color: tone),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            note,
+            style: const TextStyle(fontSize: 12.5, height: 1.6),
+          ),
+          if (uncertain && !revalidated) ...<Widget>[
+            const SizedBox(height: 6),
+            Text(
+              AppStrings.hybridUnsure,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.6,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({required this.candidate, required this.profile});
+
+  final PlantCandidate candidate;
+  final PlantProfile? profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <MapEntry<String, String>>[
+      if (candidate.familyGenus.isNotEmpty)
+        MapEntry(AppStrings.familyLabel, candidate.familyGenus),
+      if (profile?.bloomTime.isNotEmpty ?? false)
+        MapEntry(AppStrings.bloomsLabel, profile!.bloomTime),
+      if (profile?.origin.isNotEmpty ?? false)
+        MapEntry(AppStrings.originLabel, profile!.origin),
+      if (profile?.language.isNotEmpty ?? false)
+        MapEntry(AppStrings.languageLabel, profile!.language),
+    ];
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return SoftCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(
+        children: rows
+            .map((e) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      SizedBox(
+                        width: 52,
+                        child: Text(
+                          e.key,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          e.value,
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ))
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _SimilarList extends ConsumerWidget {
+  const _SimilarList({required this.candidates});
+
+  final List<PlantCandidate> candidates;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: candidates
+          .map(
+            (c) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(c.displayName,
+                  style: const TextStyle(fontSize: 14)),
+              subtitle: Text(
+                c.scientificName,
+                style: const TextStyle(fontSize: 11.5),
+              ),
+              trailing: Text('${c.confidencePercent}%'),
+              onTap: () =>
+                  ref.read(identificationProvider.notifier).applyCandidate(c),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({
+    required this.onCard,
+    required this.onRegenerate,
+    required this.onManual,
+  });
+
+  final VoidCallback onCard;
+  final VoidCallback onRegenerate;
+  final VoidCallback onManual;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(
+          top: BorderSide(color: scheme.outline.withValues(alpha: 0.7)),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            PrimaryButton(
+              label: AppStrings.createCard,
+              icon: Icons.auto_awesome_rounded,
+              onPressed: onCard,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: PrimaryButton(
+                    label: AppStrings.regenerate,
+                    outlined: true,
+                    expand: false,
+                    onPressed: onRegenerate,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PrimaryButton(
+                    label: AppStrings.manualSearch,
+                    outlined: true,
+                    expand: false,
+                    onPressed: onManual,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
