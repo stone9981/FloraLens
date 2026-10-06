@@ -2,7 +2,7 @@ name: flora_lens
 description: "花识 FloraLens —— 拍照识花、AI 生成植物档案、一键出分享卡片。"
 publish_to: 'none'
 
-version: 1.3.2+15
+version: 1.3.5+18
 
 environment:
   sdk: ^3.13.4

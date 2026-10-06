@@ -49,11 +49,18 @@ class AppStrings {
   static const String shareMomentsTip = '保存后在朋友圈/小红书粘贴即可';
   static const String openBaike = '点击查看百度百科';
   static const String cannotOpenBaike = '无法打开百度百科';
+  static const String copyMarkdown = '复制为 Markdown';
+  static const String copiedMarkdown = '已复制为 Markdown，可粘贴到备忘录 / 公众号';
+  static const String copyMarkdownFailed = '复制失败';
   static const String watermarkLocation = '水印显示拍摄地点';
   static const String watermarkLocationDesc =
       '开启后，生成卡片会获取一次当前位置（仅到市/区），写进水印。'
       '默认关闭，避免把精确位置分享出去。';
   static const String locationUnavailable = '未能获取位置（未授权或不可用）';
+  static const String locationServiceOff =
+      '定位服务未开启，请在系统设置里打开定位后重试';
+  static const String locationPermissionDenied = '未授予定位权限，无法获取位置';
+  static const String locationNoFix = '暂时获取不到位置，请换个开阔地方稍后再试';
   static const String savedSuccess = '已保存到相册';
 
   // 混合策略（置信度回落）

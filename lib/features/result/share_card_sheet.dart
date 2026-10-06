@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/baike.dart';
 import '../../core/constants.dart';
 import '../../core/result.dart';
 import '../../data/models/app_settings.dart';
@@ -49,28 +50,22 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
 
   Future<void> _loadLocation() async {
     setState(() => _locating = true);
-    final label = await LocationService.placeLabel();
+    final result = await LocationService.placeLabel();
     if (!mounted) return;
     setState(() {
-      _locationLabel = label;
+      _locationLabel = result.label;
       _locating = false;
     });
-    if (label == null && ref.read(settingsProvider).watermarkLocation) {
-      _toast(AppStrings.locationUnavailable);
+    if (result.label == null && ref.read(settingsProvider).watermarkLocation) {
+      _toast(result.error ?? AppStrings.locationUnavailable);
     }
   }
 
   /// 花名点击：用 App 内浏览器打开百度百科词条，点关闭即可回到卡片。
   Future<void> _openBaike() async {
-    final name = widget.data.candidate.displayName.isNotEmpty
-        ? widget.data.candidate.displayName
-        : widget.data.profile.title;
+    final name = Baike.bestName(widget.data.candidate, widget.data.profile);
     if (name.isEmpty) return;
-    final uri = Uri.https(
-      'baike.baidu.com',
-      '/item/${Uri.encodeComponent(name)}',
-      <String, String>{'fromModule': 'lemma_search-box'},
-    );
+    final uri = Baike.itemUrl(name);
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.inAppWebView);
       if (!ok && mounted) _toast(AppStrings.cannotOpenBaike);

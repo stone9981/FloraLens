@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/baike.dart';
 import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../data/local/settings_store.dart';
@@ -8,6 +11,7 @@ import '../../data/models/history_item.dart';
 import '../../data/models/plant.dart';
 import '../../data/models/plant_profile.dart';
 import '../../providers/identification_provider.dart';
+import '../../services/result_markdown.dart';
 import '../../widgets/common.dart';
 import 'share_card_sheet.dart';
 import 'card_templates.dart';
@@ -93,6 +97,43 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     );
   }
 
+  /// 花名点击：App 内浏览器打开百度百科，看完关闭即回到本页。
+  Future<void> _openBaike(IdentifyState state) async {
+    final candidate = state.top;
+    if (candidate == null) return;
+    final uri = Baike.itemUrl(Baike.bestName(candidate, state.profile));
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+      if (!ok && mounted) _toast(AppStrings.cannotOpenBaike);
+    } catch (_) {
+      if (mounted) _toast(AppStrings.cannotOpenBaike);
+    }
+  }
+
+  /// 把整页识别结果复制为 Markdown（含百科链接，便于核对）。
+  Future<void> _copyMarkdown(IdentifyState state) async {
+    final candidate = state.top;
+    if (candidate == null) return;
+    final md = buildResultMarkdown(
+      candidate: candidate,
+      profile: state.profile,
+      source: state.source,
+      date: DateTime.now(),
+    );
+    try {
+      await Clipboard.setData(ClipboardData(text: md));
+      if (mounted) _toast(AppStrings.copiedMarkdown);
+    } catch (_) {
+      if (mounted) _toast(AppStrings.copyMarkdownFailed);
+    }
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(identificationProvider);
@@ -107,6 +148,15 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         title: Text(state.phase == IdentifyPhase.success
             ? (state.profile?.title ?? '识别结果')
             : AppStrings.identifying),
+        actions: state.phase == IdentifyPhase.success
+            ? <Widget>[
+                IconButton(
+                  onPressed: () => _copyMarkdown(state),
+                  icon: const Icon(Icons.copy_all_rounded),
+                  tooltip: AppStrings.copyMarkdown,
+                ),
+              ]
+            : null,
       ),
       body: SafeArea(
         child: switch (state.phase) {
@@ -135,6 +185,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
               state: state,
               imagePath: imagePath,
               onCard: () => _openCard(state),
+              onNameTap: () => _openBaike(state),
               onRegenerate: () =>
                   ref.read(identificationProvider.notifier).regenerateProfile(),
               onManual: _openManualPick,
@@ -240,6 +291,7 @@ class _Success extends StatelessWidget {
     required this.state,
     required this.imagePath,
     required this.onCard,
+    required this.onNameTap,
     required this.onRegenerate,
     required this.onManual,
   });
@@ -247,6 +299,7 @@ class _Success extends StatelessWidget {
   final IdentifyState state;
   final String imagePath;
   final VoidCallback onCard;
+  final VoidCallback onNameTap;
   final VoidCallback onRegenerate;
   final VoidCallback onManual;
 
@@ -274,7 +327,8 @@ class _Success extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 18),
-              _TitleBlock(candidate: candidate, profile: profile),
+              _TitleBlock(
+                  candidate: candidate, profile: profile, onNameTap: onNameTap),
               const SizedBox(height: 14),
               _MetaRow(candidate: candidate, profile: profile),
               if (state.profileFromCache)
@@ -363,32 +417,49 @@ class _Success extends StatelessWidget {
 }
 
 class _TitleBlock extends StatelessWidget {
-  const _TitleBlock({required this.candidate, required this.profile});
+  const _TitleBlock(
+      {required this.candidate, required this.profile, this.onNameTap});
 
   final PlantCandidate candidate;
   final PlantProfile? profile;
+  final VoidCallback? onNameTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final title =
         (profile?.title.isNotEmpty ?? false) ? profile!.title : candidate.displayName;
+    final titleStyle = const TextStyle(
+      fontSize: 27,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
+    );
+    final titleWidget = onNameTap == null
+        ? Text(title, style: titleStyle)
+        : GestureDetector(
+            onTap: onNameTap,
+            child: Tooltip(
+              message: AppStrings.openBaike,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: <Widget>[
+                  Flexible(
+                    child: Text(title, style: titleStyle),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.open_in_new_rounded,
+                      size: 18, color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: <Widget>[
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 27,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
+            Expanded(child: titleWidget),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
