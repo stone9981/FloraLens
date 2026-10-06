@@ -55,7 +55,7 @@ class LlmClient {
     required String systemPrompt,
     required String userPrompt,
     double? temperature,
-    int maxTokens = 1200,
+    int maxTokens = 1600,
   }) async {
     if (config.baseUrl.trim().isEmpty || config.model.trim().isEmpty) {
       return const Result.err(AppException('尚未配置大模型服务', code: 'not_configured'));
@@ -83,7 +83,7 @@ class LlmClient {
     required String userPrompt,
     required Uint8List imageBytes,
     double? temperature,
-    int maxTokens = 700,
+    int maxTokens = 1500,
   }) async {
     if (config.baseUrl.trim().isEmpty || config.model.trim().isEmpty) {
       return const Result.err(AppException('尚未配置视觉模型服务', code: 'not_configured'));
@@ -118,7 +118,7 @@ class LlmClient {
   Future<Result<String>> _post(Map<String, dynamic> body) async {
     final dio = _buildDio();
     try {
-      final res = await dio.post<Map<String, dynamic>>(
+      final res = await dio.post(
         '$_normalizedBase$_chatPath',
         data: body,
       );
@@ -133,27 +133,38 @@ class LlmClient {
         return Result.err(AppException.quota());
       }
       if (code >= 400) {
-        final msg = _extractError(data) ?? '服务端返回 $code';
-        return Result.err(AppException(_decorateError(msg, code, data),
+        final m = _asMap(data);
+        final msg = _extractError(m) ?? '服务端返回 $code';
+        return Result.err(AppException(_decorateError(msg, code, m),
             code: 'http_$code'));
       }
-      if (data == null) {
-        return Result.err(AppException.parse());
-      }
 
-      final choices = data['choices'];
-      if (choices is List && choices.isNotEmpty) {
-        final message = choices[0] is Map
-            ? (choices[0] as Map<String, dynamic>)['message']
-            : null;
-        final content = message is Map
-            ? (message['content'] ?? '') as String?
-            : null;
-        if (content != null && content.trim().isNotEmpty) {
-          return Result.ok(content.trim());
+      final mapData = _asMap(data);
+
+      // 部分网关（如 Agnes AI）遇到无效 Key 时返回 200 + {"error": {...}}，
+      // 而非标准 401。这里必须兜底，否则会被误判成「无法解析」。
+      if (mapData != null) {
+        final apiErr = _extractError(mapData);
+        if (apiErr != null) {
+          return Result.err(
+              AppException(_decorateApiError(apiErr), code: 'api_error'));
         }
       }
-      return Result.err(AppException.parse());
+
+      // 兼容多种返回结构：OpenAI Chat / Agnes Responses / Anthropic Messages。
+      final text = _extractContent(mapData);
+      if (text != null && text.trim().isNotEmpty) {
+        return Result.ok(text.trim());
+      }
+
+      // 结构无法识别：把原始返回透出来便于排查。
+      final raw = _rawText(res);
+      debugPrint('[LlmClient] 无法解析的响应: $raw');
+      return Result.err(AppException(
+        '服务端返回结构无法解析（未找到文本内容字段）'
+        '${raw.isNotEmpty ? '；原始返回：${_clip(raw, 200)}' : ''}',
+        code: 'parse',
+      ));
     } on DioException catch (e, s) {
       return Result.err(_mapDioError(e), s);
     } catch (e, s) {
@@ -178,12 +189,14 @@ class LlmClient {
   }
 
   /// 测试连通性：用最小 token 请求探活。
+  /// 注意：agnes-2.5-flash 等推理模型会把 token 优先用于「思考」，
+  /// 预算太小会导致正文为空。这里给足预算，让正文有机会产出。
   Future<Result<String>> testConnection() async {
     return chat(
       systemPrompt: '你是一个连接测试助手。',
       userPrompt: '请只回复两个字：正常',
       temperature: 0,
-      maxTokens: 16,
+      maxTokens: 256,
     );
   }
 
@@ -228,6 +241,131 @@ class LlmClient {
       if (msg != null) return msg.toString();
     }
     if (err is String) return err;
+    return null;
+  }
+
+  /// 把网关层业务错误（如 Agnes 的 Invalid token）翻译成人话。
+  String _decorateApiError(String message) {
+    final m = message.toLowerCase();
+    if (m.contains('token') ||
+        m.contains('unauthor') ||
+        m.contains('auth') ||
+        m.contains('api key') ||
+        m.contains('permission') ||
+        m.contains('expired')) {
+      return 'API Key 无效或已失效（服务端原话：$message）。请在 Agnes 控制台重新复制 '
+          'Key，点「粘贴 Key」填入后重试；注意别混用其他项目的 Key。';
+    }
+    return '服务端返回错误：$message';
+  }
+
+  /// 把响应体转成可读文本，用于解析失败时透出原始内容。
+  String _rawText(Response<dynamic> res) {
+    final d = res.data;
+    if (d == null) return '';
+    if (d is String) return d;
+    try {
+      return jsonEncode(d);
+    } catch (_) {
+      return d.toString();
+    }
+  }
+
+  /// 截断过长的原始返回，避免提示文案爆框。
+  String _clip(String s, int max) => s.length > max ? '${s.substring(0, max)}…' : s;
+
+  /// 把响应体规整成 Map：处理 Dio 已解析的 Map，以及被误判为 String 的 JSON。
+  Map<String, dynamic>? _asMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return data.cast<String, dynamic>();
+    if (data is String) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) return decoded.cast<String, dynamic>();
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// 从多种可能的响应结构里抽取模型文本。
+  /// 兼容 OpenAI Chat / Agnes Responses API / Anthropic Messages 以及若干兜底字段。
+  String? _extractContent(Map<String, dynamic>? data) {
+    if (data == null) return null;
+
+    // 1) OpenAI Chat Completions：choices[0].message.content
+    final choices = data['choices'];
+    if (choices is List && choices.isNotEmpty) {
+      final c0 = choices[0];
+      if (c0 is Map) {
+        final msg = (c0 as Map<String, dynamic>)['message'];
+        if (msg is Map) {
+          // 正文内容（推理模型真正的回答）
+          final content = msg['content'];
+          if (content is String && content.trim().isNotEmpty) {
+            return content.trim();
+          }
+          // 推理模型（如 Agnes 2.5 Flash）可能把全部 token 用于思考（reasoning_content），
+          // 导致正文 content 为空。此时退回思考内容，至少能证明连通/出 token。
+          final reasoning = msg['reasoning_content'];
+          if (reasoning is String && reasoning.trim().isNotEmpty) {
+            return reasoning.trim();
+          }
+          // 个别实现把文本直接挂在 choices[0].text
+          if (c0['text'] is String) return (c0['text'] as String).trim();
+        }
+      }
+    }
+
+    // 2) Agnes / OpenAI Responses API：output[].content[].output_text|.text
+    final output = data['output'];
+    if (output is List) {
+      final sb = StringBuffer();
+      for (final item in output) {
+        if (item is! Map) continue;
+        final content = (item as Map<String, dynamic>)['content'];
+        if (content is List) {
+          for (final b in content) {
+            if (b is Map &&
+                (b['type'] == 'output_text' || b['type'] == 'text') &&
+                b['text'] is String) {
+              sb.write(b['text']);
+            }
+          }
+        }
+        if (item['text'] is String) sb.write(item['text']);
+      }
+      if (sb.isNotEmpty) return sb.toString().trim();
+      // 顶层 output_text
+      if (data['output_text'] is String) {
+        return (data['output_text'] as String).trim();
+      }
+    }
+
+    // 3) Anthropic Messages：content[].text
+    final content = data['content'];
+    if (content is List) {
+      final sb = StringBuffer();
+      for (final b in content) {
+        if (b is Map && b['type'] == 'text' && b['text'] is String) {
+          sb.write(b['text']);
+        }
+      }
+      if (sb.isNotEmpty) return sb.toString().trim();
+    }
+
+    // 4) 兜底顶层字段
+    for (final key in const [
+      'content',
+      'text',
+      'output_text',
+      'generated_text',
+      'response',
+      'answer',
+      'completion',
+    ]) {
+      final v = data[key];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
     return null;
   }
 }
@@ -300,7 +438,7 @@ $known
       systemPrompt: _systemPrompt,
       userPrompt: _userPrompt(candidate),
       temperature: 0.65,
-      maxTokens: 1400,
+      maxTokens: 2048,
     );
 
     return r.when(

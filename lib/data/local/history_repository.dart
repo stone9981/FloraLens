@@ -30,10 +30,10 @@ class HistoryRepository {
   }
 
   Future<List<HistoryItem>> all() async {
-    if (!await _indexFile.exists()) return const <HistoryItem>[];
+    if (!await _indexFile.exists()) return <HistoryItem>[];
     try {
       final raw = await _indexFile.readAsString();
-      if (raw.isEmpty) return const <HistoryItem>[];
+      if (raw.isEmpty) return <HistoryItem>[];
       final list = jsonDecode(raw) as List<dynamic>;
       final items = list
           .map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
@@ -43,12 +43,12 @@ class HistoryRepository {
       return items;
     } catch (e) {
       debugPrint('[HistoryRepository] 读取失败: $e');
-      return const <HistoryItem>[];
+      return <HistoryItem>[];
     }
   }
 
   Future<void> save(HistoryItem item) async {
-    final items = await all();
+    final items = (await all()).toList();
     final idx = items.indexWhere((e) => e.id == item.id);
     if (idx >= 0) {
       items[idx] = item;
@@ -59,7 +59,7 @@ class HistoryRepository {
   }
 
   Future<void> update(String id, HistoryItem Function(HistoryItem) mutator) async {
-    final items = await all();
+    final items = (await all()).toList();
     final idx = items.indexWhere((e) => e.id == id);
     if (idx < 0) return;
     items[idx] = mutator(items[idx]);
@@ -67,7 +67,7 @@ class HistoryRepository {
   }
 
   Future<void> remove(String id) async {
-    final items = await all();
+    final items = (await all()).toList();
     HistoryItem? target;
     for (final item in items) {
       if (item.id == id) {
@@ -101,7 +101,7 @@ class HistoryRepository {
 
   /// 超出上限时裁剪最旧的记录及其图片，避免体积无限增长。
   Future<void> trimTo(int maxCount) async {
-    final items = await all();
+    final items = (await all()).toList();
     if (items.length <= maxCount) return;
     final removed = items.sublist(maxCount);
     await _writeAll(items.take(maxCount).toList());

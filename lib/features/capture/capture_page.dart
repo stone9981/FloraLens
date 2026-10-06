@@ -28,6 +28,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
   bool _taking = false;
   bool _flashOn = false;
   String? _error;
+  bool _permanentlyDenied = false;
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
       if (!mounted) return;
       setState(() {
         _initializing = false;
+        _permanentlyDenied = status.isPermanentlyDenied;
         _error = status.isPermanentlyDenied
             ? AppStrings.permissionPermanentlyDenied
             : AppStrings.permissionDenied;
@@ -202,15 +204,29 @@ class _CapturePageState extends ConsumerState<CapturePage>
                 style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: _init,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('重试'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white54),
+              if (_permanentlyDenied)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await openAppSettings();
+                    // 从系统设置返回后会由 AppLifecycleState.resumed 触发 _init 重新检查权限。
+                  },
+                  icon: const Icon(Icons.settings_outlined),
+                  label: const Text('去系统设置'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white54),
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: _init,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('重试'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white54),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
