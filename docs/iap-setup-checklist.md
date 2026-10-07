@@ -27,7 +27,7 @@
 | 字段 | 简体中文 | English (U.S.) |
 | --- | --- | --- |
 | 商店名 | `PetalLens`（可加「PetalLens 识花」） | `PetalLens` |
-| 副标题 Subtitle | 拍照识别植物与花卉 | Identify plants & flowers by photo |
+| 副标题 Subtitle | 拍照识别植物与花卉 | Identify plants by photo（24 字符，<30 上限；flowers 由关键词覆盖） |
 | 关键词 Keywords（逗号分隔、无空格、≤100 字符） | `植物识别,识花,花草,拍照识图,园艺,盆栽,树叶,养护` | `plant identifier,flower identifier,garden,botany,leaf,plant care` |
 | 描述 Description | 原创中文介绍（功能/Pro/去广告） | 原创英文介绍（功能/Pro/ad-free） |
 | 截图/预览 | 可选本地化；展示真实界面 | 可选本地化；展示真实界面 |
