@@ -48,14 +48,14 @@
 | **Learn More About Age Ratings** | 帮助链接，不用填 | 点开看说明即可 |
 | **App Encryption Documentation（加密文档）** | 不提交（标准豁免） | app 仅用标准 HTTPS/TLS 联网，属加密出口合规**豁免类**；提审遇「Does your app use encryption?」选标准豁免项即可。省事做法：在 Agreements, Tax, and Banking 底部做一次年度 Export Compliance 认证，之后各版本免重复答 |
 | **App Store Regulations & Permits（监管许可）** | 留空 / N/A | 受监管行业（金融/新闻/医药等）许可区，FloraLens 不沾 |
-| **China Mainland ICP Filing Number（中国大陆 ICP 备案号）** | ⚠️ 初期建议**排除中国大陆区**，不填 | 若想在中国大陆上架需 MIIT 备案号且与简体中文元数据一致；更关键：FloraLens 有 IAP+广告=经营性 app，按中国规定需 **ICP 经营许可证（B25）**而非基础备案，门槛高。初期在 Pricing & Availability 把「中国大陆」移出可售地区，先在全球其他区上架，不被 ICP 卡住 |
+| **China Mainland ICP Filing Number（中国大陆 ICP 备案号）** | ⚠️ 初期建议**排除中国大陆区**，不填 | 仅当勾选中国大陆为可售地区时才强制要求。**不进中国区 → 此字段留空、不影响全球上架**。若想进中国区，门槛极高：①基础 ICP 备案通常要求 app 后端托管在中国大陆 + 中国境内主体，外国/个人开发者一般无法直接备案，需借中国实体或代理/出版商代办；②FloraLens 含 IAP+广告=经营性 app，按中国规定不止基础备案，还需 **ICP 经营许可证（B25）**（企业主体、注册资本等门槛）；③配套独立隐私政策网页 + PIPL 首次弹窗同意。初期在 Pricing & Availability 把「中国大陆」移出可售地区，先全球上线 |
 | **Vietnam Game License（越南游戏许可）** | 忽略 | 仅针对游戏在越南分发，FloraLens 非游戏 |
 | **Regulated Medical Devices（受监管医疗设备）** | 不适用 / No | 只有自称医疗设备/做医疗诊断才相关，识植物不沾 |
 | **App Store Server Notifications（服务器通知）** | 留空（可选） | 把购买/订阅事件推到你自己的服务器；FloraLens 走客户端本地处理 IAP（`purchaseStream` + `isPro` 持久化），无后端，不需配 |
 | **App-Specific Shared Secret（App 专用共享密钥）** | 留空（可选） | 用于在你服务器校验 IAP 收据；同样走客户端本地校验、无后端服务器，不需要 |
 
 - [ ] 分级问卷做完后确认结果 = **4+**（与「适合 4 岁以上」一致）
-- [ ] 初期 Pricing & Availability 暂不包含「中国大陆」，避免 ICP 许可前置卡上架
+- [ ] 初期 Pricing & Availability 暂不包含「中国大陆」，避免 ICP 许可前置卡上架；**是否进中国区是二选一**：进→必须备（且经营性 app 要 B25 许可证），不进→此字段留空、全球照常上架
 - [ ] 加密合规走标准豁免，不提交任何加密文档
 
 ---
