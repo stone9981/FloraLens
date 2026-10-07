@@ -39,5 +39,12 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      # google_mobile_ads 9.x 的 FLTAd_Internal module 会 include 一个
+      # 非模块化头文件（GoogleMobileAds_Beta.h），默认会触发
+      # "Include of non-modular header inside framework module" 编译错误。
+      # 放开该开关以允许这种 include。
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    end
   end
 end
