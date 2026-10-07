@@ -69,6 +69,7 @@ class SettingsController extends StateNotifier<AppSettings> {
     int? maxHistory,
     bool? onboarded,
     String? language,
+    bool? isPro,
   }) async {
     state = state.copyWith(
       engine: engine,
@@ -92,6 +93,7 @@ class SettingsController extends StateNotifier<AppSettings> {
       maxHistory: maxHistory,
       onboarded: onboarded,
       language: language,
+      isPro: isPro,
     );
     await _persist();
   }
@@ -122,6 +124,9 @@ class SettingsController extends StateNotifier<AppSettings> {
       patch(cardTemplate: template);
 
   Future<void> setLanguage(String language) => patch(language: language);
+
+  /// 由内购解锁/恢复后写回 Pro 状态。
+  Future<void> setPro(bool value) => patch(isPro: value);
 
   Future<void> completeOnboarding() => patch(onboarded: true);
 

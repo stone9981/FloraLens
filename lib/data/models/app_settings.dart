@@ -321,6 +321,7 @@ class AppSettings {
     this.maxHistory = 200,
     this.onboarded = false,
     this.language = 'system',
+    this.isPro = false,
   });
 
   final EngineType engine;
@@ -356,6 +357,12 @@ class AppSettings {
 
   /// 界面语言：'system' / 'zh' / 'en'。默认跟随系统（非中文区域回退英文）。
   final String language;
+
+  /// 是否已开通 FloraLens Pro 会员。
+  ///
+  /// Pro 会员享有：托管识别引擎（免配置）、去除广告、无水印高清卡片等权益。
+  /// 由内购（[IapService]）解锁后写盘，进程重启不丢。
+  final bool isPro;
 
   /// 当前所选引擎是否具备可用凭据。
   bool get engineReady {
@@ -467,6 +474,7 @@ class AppSettings {
     int? maxHistory,
     bool? onboarded,
     String? language,
+    bool? isPro,
   }) {
     return AppSettings(
       engine: engine ?? this.engine,
@@ -492,6 +500,7 @@ class AppSettings {
       maxHistory: maxHistory ?? this.maxHistory,
       onboarded: onboarded ?? this.onboarded,
       language: language ?? this.language,
+      isPro: isPro ?? this.isPro,
     );
   }
 
@@ -544,6 +553,7 @@ class AppSettings {
     maxHistory: (json['maxHistory'] as num?)?.toInt() ?? 200,
     onboarded: (json['onboarded'] as bool?) ?? false,
     language: (json['language'] as String?) ?? 'system',
+    isPro: (json['isPro'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -568,5 +578,6 @@ class AppSettings {
     'maxHistory': maxHistory,
     'onboarded': onboarded,
     'language': language,
+    'isPro': isPro,
   };
 }

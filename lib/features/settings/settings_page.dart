@@ -18,6 +18,7 @@ import '../../data/models/app_settings.dart';
 import '../../data/models/plant.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pro_paywall.dart';
 import '../document/document_page.dart';
 
 /// 设置页：识别引擎、大模型、外观与关于。
@@ -255,6 +256,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
           children: <Widget>[
+            _buildProSection(settings, controller),
+            const SizedBox(height: 26),
             SectionTitle(context.l10n.tr('recognitionSection')),
             _buildEngineSection(settings, controller),
             const SizedBox(height: 26),
@@ -279,6 +282,101 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       ),
     );
+  }
+
+  // ---- 会员 / 内购 ----
+
+  Widget _buildProSection(AppSettings settings, SettingsController controller) {
+    final scheme = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final isPro = settings.isPro;
+
+    return SoftCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                Icons.workspace_premium_rounded,
+                color: scheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                l10n.tr('proSection'),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isPro
+                      ? scheme.primary.withValues(alpha: 0.12)
+                      : scheme.outline.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  isPro ? l10n.tr('proActive') : l10n.tr('proInactive'),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: isPro ? scheme.primary : scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!isPro) ...<Widget>[
+            const SizedBox(height: 10),
+            ProBenefitRow(l10n.tr('proBenefitEngine')),
+            ProBenefitRow(l10n.tr('proBenefitAdFree')),
+            ProBenefitRow(l10n.tr('proBenefitCard')),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _openPaywall,
+                icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                label: Text(l10n.tr('upgradePro')),
+              ),
+            ),
+          ] else ...<Widget>[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: _restore,
+                child: Text(l10n.tr('restorePurchase')),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openPaywall() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const ProPaywallSheet(),
+    );
+  }
+
+  Future<void> _restore() async {
+    await ref.read(iapServiceProvider).restore();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(context.l10n.tr('restoreDone'))));
   }
 
   Widget _buildEngineSection(

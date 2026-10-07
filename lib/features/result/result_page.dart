@@ -10,7 +10,9 @@ import '../../data/models/history_item.dart';
 import '../../data/models/plant.dart';
 import '../../data/models/plant_profile.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/app_providers.dart';
 import '../../providers/identification_provider.dart';
+import '../../services/ad_service.dart';
 import '../../services/result_markdown.dart';
 import '../../widgets/common.dart';
 import 'share_card_sheet.dart';
@@ -42,6 +44,8 @@ class _ResultPageState extends ConsumerState<ResultPage> {
   @override
   void initState() {
     super.initState();
+    // 记录一次识别，供首页返回时按阈值（每 3 次）弹插屏。
+    ref.read(adServiceProvider).recordIdentify();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(identificationProvider);
       if (state.imagePath != widget.args.imagePath ||
@@ -182,6 +186,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           IdentifyPhase.success => _Success(
             state: state,
             imagePath: imagePath,
+            isPro: ref.watch(settingsProvider).isPro,
             onCard: () => _openCard(state),
             onNameTap: () => _openBaike(state),
             onRegenerate: () =>
@@ -291,6 +296,7 @@ class _Success extends StatelessWidget {
   const _Success({
     required this.state,
     required this.imagePath,
+    this.isPro = false,
     required this.onCard,
     required this.onNameTap,
     required this.onRegenerate,
@@ -299,6 +305,7 @@ class _Success extends StatelessWidget {
 
   final IdentifyState state;
   final String imagePath;
+  final bool isPro;
   final VoidCallback onCard;
   final VoidCallback onNameTap;
   final VoidCallback onRegenerate;
@@ -416,6 +423,12 @@ class _Success extends StatelessWidget {
                   candidates: state.result!.candidates.skip(1).take(4).toList(),
                 ),
               ],
+              // Pro 用户不展示广告；免费用户结果内容后插一张广告卡。
+              if (!isPro)
+                const Padding(
+                  padding: EdgeInsets.only(top: 18),
+                  child: AdInlineCard(),
+                ),
               const SizedBox(height: 20),
             ],
           ),

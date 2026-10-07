@@ -36,6 +36,12 @@ dependencies:
   geolocator: ^13.0.0
   # 逆地理编码：经纬度 → 市/区地名
   geocoding: ^5.0.0
+  # 广告变现：Google AdMob（横幅 / 插屏 / 激励）
+  google_mobile_ads: ^9.1.0
+  # 苹果内购 / Google Play 结算
+  in_app_purchase: ^3.3.1
+  # iOS 14+ 广告追踪授权（ATT），AdMob 个性化广告需要
+  app_tracking_transparency: ^2.0.0
 
 dev_dependencies:
   flutter_test:

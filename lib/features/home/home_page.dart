@@ -3,15 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/routes.dart';
+import '../../core/route_observer.dart';
 import '../../core/theme.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/local/settings_store.dart';
 import '../../data/models/history_item.dart';
 import '../../data/models/picked_photo.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/app_providers.dart';
 import '../../providers/history_provider.dart';
 import '../../providers/identification_provider.dart';
+import '../../services/ad_service.dart';
 import '../../widgets/common.dart';
+import '../../widgets/pro_paywall.dart';
 import '../result/result_page.dart';
 
 /// 主页：两个主入口 + 最近识别。
@@ -22,8 +26,29 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> with RouteAware {
   bool _busy = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  /// 从结果页返回首页时，按计数阈值弹一次插屏（Pro 用户不弹）。
+  @override
+  void didPopNext() {
+    final settings = ref.read(settingsProvider);
+    if (!settings.isPro) {
+      ref.read(adServiceProvider).showInterstitial();
+    }
+  }
 
   Future<void> _pickFromGallery() async {
     if (_busy) return;
@@ -70,6 +95,17 @@ class _HomePageState extends ConsumerState<HomePage> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// 未配置引擎时，直接弹付费墙引导开通 Pro（免配置即拍即识）。
+  Future<void> _openPaywall() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const ProPaywallSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -105,6 +141,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               ),
               _buildRecent(history),
+              if (!settings.isPro)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: AdBannerWidget(),
+                  ),
+                ),
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           ),
@@ -338,6 +381,15 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
             if (!engineOk || !llmOk) ...<Widget>[
               const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _openPaywall,
+                  icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                  label: Text(context.l10n.tr('goProCta')),
+                ),
+              ),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(

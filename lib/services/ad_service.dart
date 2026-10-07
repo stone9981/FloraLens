@@ -1,0 +1,183 @@
+import 'dart:io';
+
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
+import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+/// 广告位与 App ID 配置。
+///
+/// 当前填的是 Google 官方「测试 ID」，直接跑起来就能看到测试广告、不会产生费用。
+/// 上线前：
+/// 1. 把 [useTestAds] 设为 false；
+/// 2. 把 [bannerAdUnit] / [interstitialAdUnit] 换成 AdMob 后台的真实广告单元 ID；
+/// 3. 把 AndroidManifest 与 Info.plist 里的 APPLICATION_ID 也换成真实 App ID。
+class AdConfig {
+  /// true=使用测试广告单元（开发期安全）；上线务必改 false。
+  static const bool useTestAds = true;
+
+  /// Demo App ID（测试用，可放心提交；正式环境在原生配置里替换）。
+  static const String androidAppId = 'ca-app-pub-3940256099942544~3347511713';
+  static const String iosAppId = 'ca-app-pub-3940256099942544~3347511713';
+
+  static const String _testBannerAndroid =
+      'ca-app-pub-3940256099942544/6300978111';
+  static const String _testBannerIos = 'ca-app-pub-3940256099942544/2934735716';
+  static const String _testInterstitialAndroid =
+      'ca-app-pub-3940256099942544/1033173712';
+  static const String _testInterstitialIos =
+      'ca-app-pub-3940256099942544/4411468910';
+
+  /// 正式广告单元 ID（占位，上线替换）。
+  static const String bannerAdUnit = 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
+  static const String interstitialAdUnit =
+      'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
+
+  static String get bannerAdUnitId => useTestAds
+      ? (Platform.isIOS ? _testBannerIos : _testBannerAndroid)
+      : bannerAdUnit;
+
+  static String get interstitialAdUnitId => useTestAds
+      ? (Platform.isIOS ? _testInterstitialIos : _testInterstitialAndroid)
+      : interstitialAdUnit;
+}
+
+/// AdMob 广告服务：初始化、横幅/插屏加载与展示，以及识别计数（用于插屏阈值）。
+///
+/// 是否为 Pro 用户由调用方（设置页/各页面读 [AppSettings.isPro]）判断，
+/// 本服务只负责「按 Pro 之外」的时机把广告展示出来。
+class AdService {
+  AdService();
+
+  bool _initialized = false;
+  int _identifyCount = 0;
+  InterstitialAd? _interstitial;
+
+  /// 累计进入结果页的次数，用于决定何时弹插屏（每 3 次）。
+  int get identifyCount => _identifyCount;
+
+  /// 每次打开结果页调用一次。
+  void recordIdentify() => _identifyCount++;
+
+  /// 是否到了该弹插屏的计数时机（仅看计数；是否 Pro 由调用方把关）。
+  bool get shouldShowInterstitial =>
+      _identifyCount > 0 && _identifyCount % 3 == 0;
+
+  Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
+    try {
+      await MobileAds.instance.initialize();
+      // iOS 14+ 需要 ATT 授权才能投放个性化广告。
+      if (Platform.isIOS) {
+        final status =
+            await AppTrackingTransparency.trackingAuthorizationStatus;
+        if (status == TrackingStatus.notDetermined) {
+          await AppTrackingTransparency.requestTrackingAuthorization();
+        }
+      }
+    } catch (e) {
+      debugPrint('[AdService] init failed: $e');
+    }
+  }
+
+  /// 预加载一张插屏，便于返回首页时即时弹出。
+  Future<void> preloadInterstitial() async {
+    if (_interstitial != null) return;
+    await InterstitialAd.load(
+      adUnitId: AdConfig.interstitialAdUnitId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) => _interstitial = ad,
+        onAdFailedToLoad: (error) {
+          debugPrint('[AdService] interstitial load failed: $error');
+          _interstitial = null;
+        },
+      ),
+    );
+  }
+
+  /// 立即展示插屏（若尚未加载则先加载）。无广告可用时静默返回。
+  Future<void> showInterstitial() async {
+    if (_interstitial == null) {
+      await preloadInterstitial();
+    }
+    final ad = _interstitial;
+    if (ad == null) return;
+    _interstitial = null;
+    try {
+      ad.show();
+    } catch (e) {
+      debugPrint('[AdService] show interstitial failed: $e');
+    }
+  }
+
+  void dispose() {
+    _interstitial?.dispose();
+    _interstitial = null;
+  }
+}
+
+/// 底部横幅广告组件。
+///
+/// 调用方需自行判断是否渲染：Pro 用户（[AppSettings.isPro]）不要挂载本组件。
+/// 广告未加载完成前返回空占位，避免布局抖动。
+class AdBannerWidget extends StatefulWidget {
+  const AdBannerWidget({super.key, this.size = AdSize.banner});
+
+  final AdSize size;
+
+  @override
+  State<AdBannerWidget> createState() => _AdBannerWidgetState();
+}
+
+class _AdBannerWidgetState extends State<AdBannerWidget> {
+  BannerAd? _banner;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _banner = BannerAd(
+      adUnitId: AdConfig.bannerAdUnitId,
+      size: widget.size,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          if (mounted) setState(() => _ready = true);
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('[AdBanner] failed: $error');
+          ad.dispose();
+        },
+      ),
+    )..load();
+  }
+
+  @override
+  void dispose() {
+    _banner?.dispose();
+    _banner = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final banner = _banner;
+    if (!_ready || banner == null) return const SizedBox.shrink();
+    return SizedBox(
+      width: banner.size.width.toDouble(),
+      height: banner.size.height.toDouble(),
+      child: AdWidget(ad: banner),
+    );
+  }
+}
+
+/// 信息流里的「广告卡」：复用横幅广告，外层由调用方用 SoftCard 包成卡片。
+class AdInlineCard extends StatelessWidget {
+  const AdInlineCard({super.key, this.size = AdSize.largeBanner});
+
+  final AdSize size;
+
+  @override
+  Widget build(BuildContext context) => AdBannerWidget(size: size);
+}

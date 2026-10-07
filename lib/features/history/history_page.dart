@@ -10,7 +10,9 @@ import '../../data/models/history_item.dart';
 import '../../data/models/plant_profile.dart';
 import '../../data/local/settings_store.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/app_providers.dart';
 import '../../providers/history_provider.dart';
+import '../../services/ad_service.dart';
 import '../../widgets/common.dart';
 import '../result/card_templates.dart';
 import '../result/share_card_sheet.dart';
@@ -173,6 +175,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(historyProvider);
+    final settings = ref.watch(settingsProvider);
     final items = history.valueOrNull ?? const <HistoryItem>[];
 
     return Scaffold(
@@ -224,57 +227,71 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         ],
       ),
       body: SafeArea(
-        child: history.when(
-          loading: () =>
-              const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          error: (e, _) =>
-              EmptyState(message: context.l10n.tr('readHistoryFailed')),
-          data: (data) {
-            if (data.isEmpty) {
-              return EmptyState(
-                message: context.l10n.tr('emptyRecent'),
-                icon: Icons.photo_album_outlined,
-              );
-            }
-            return RefreshIndicator(
-              onRefresh: () => ref.read(historyProvider.notifier).refresh(),
-              child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.78,
+        child: Column(
+          children: <Widget>[
+            Expanded(
+              child: history.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                itemCount: data.length,
-                itemBuilder: (context, index) {
-                  final item = data[index];
-                  final selected =
-                      _selectionMode && _selected.contains(item.id);
-                  return _HistoryTile(
-                    item: item,
-                    position: index,
-                    selectionMode: _selectionMode,
-                    selected: selected,
-                    onTap: () {
-                      if (_selectionMode) {
-                        _toggle(item.id);
-                      } else {
-                        _openCard(item);
-                      }
-                    },
-                    onLongPress: () {
-                      if (_selectionMode) {
-                        _toggle(item.id);
-                      } else {
-                        _enterSelection(item.id);
-                      }
-                    },
+                error: (e, _) =>
+                    EmptyState(message: context.l10n.tr('readHistoryFailed')),
+                data: (data) {
+                  if (data.isEmpty) {
+                    return EmptyState(
+                      message: context.l10n.tr('emptyRecent'),
+                      icon: Icons.photo_album_outlined,
+                    );
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        ref.read(historyProvider.notifier).refresh(),
+                    child: GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.78,
+                          ),
+                      itemCount: data.length,
+                      itemBuilder: (context, index) {
+                        final item = data[index];
+                        final selected =
+                            _selectionMode && _selected.contains(item.id);
+                        return _HistoryTile(
+                          item: item,
+                          position: index,
+                          selectionMode: _selectionMode,
+                          selected: selected,
+                          onTap: () {
+                            if (_selectionMode) {
+                              _toggle(item.id);
+                            } else {
+                              _openCard(item);
+                            }
+                          },
+                          onLongPress: () {
+                            if (_selectionMode) {
+                              _toggle(item.id);
+                            } else {
+                              _enterSelection(item.id);
+                            }
+                          },
+                        );
+                      },
+                    ),
                   );
                 },
               ),
-            );
-          },
+            ),
+            if (!settings.isPro)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: AdBannerWidget(),
+              ),
+          ],
         ),
       ),
     );

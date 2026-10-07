@@ -5,10 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/routes.dart';
+import 'core/route_observer.dart';
 import 'core/theme.dart';
 import 'data/local/settings_store.dart';
 import 'data/models/app_settings.dart';
 import 'l10n/app_localizations.dart';
+import 'providers/app_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +50,9 @@ class _FloraLensAppState extends ConsumerState<FloraLensApp> {
     // 预热设置，避免首帧读取磁盘造成抖动。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(settingsProvider);
+      // 初始化广告与内购（懒加载 provider，首次读取即创建并触发 init）。
+      ref.read(adServiceProvider).init();
+      ref.read(iapServiceProvider).init();
     });
   }
 
@@ -75,6 +80,7 @@ class _FloraLensAppState extends ConsumerState<FloraLensApp> {
       supportedLocales: AppLocalizations.supportedLocales,
       initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.generate,
+      navigatorObservers: <NavigatorObserver>[routeObserver],
       builder: (context, child) {
         // 限制整体字号缩放倍率，避免用户系统大字导致卡片排版溢出。
         final mq = MediaQuery.of(context);
