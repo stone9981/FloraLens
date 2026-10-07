@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../core/constants.dart';
 import '../../core/routes.dart';
 import '../../core/theme.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/local/settings_store.dart';
 import '../../data/models/history_item.dart';
 import '../../data/models/picked_photo.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/history_provider.dart';
 import '../../providers/identification_provider.dart';
 import '../../widgets/common.dart';
@@ -37,10 +37,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       );
       if (picked == null) return;
       if (!mounted) return;
-      await _openResult(
-        picked.path,
-        source: IdentifySource.gallery,
-      );
+      await _openResult(picked.path, source: IdentifySource.gallery);
     } catch (e) {
       _toast('选图失败，请重试');
     } finally {
@@ -69,9 +66,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -94,17 +90,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverToBoxAdapter(
                   child: SectionTitle(
-                    AppStrings.recentTitle,
+                    context.l10n.tr('recentTitle'),
                     trailing: Text(
-                      '全部',
+                      context.l10n.tr('all'),
                       style: TextStyle(
                         fontSize: 13,
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    onTap: () => Navigator.of(context)
-                        .pushNamed(AppRoutes.history),
+                    onTap: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.history),
                   ),
                 ),
               ),
@@ -130,8 +126,11 @@ class _HomePageState extends ConsumerState<HomePage> {
               color: scheme.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(Icons.local_florist_rounded,
-                color: scheme.primary, size: 22),
+            child: Icon(
+              Icons.local_florist_rounded,
+              color: scheme.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -139,7 +138,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  AppStrings.homeTitle,
+                  context.l10n.tr('homeTitle'),
                   style: const TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
@@ -147,8 +146,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  AppStrings.homeSubtitle,
-                  style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+                  context.l10n.tr('homeSubtitle'),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -156,12 +158,13 @@ class _HomePageState extends ConsumerState<HomePage> {
           IconButton(
             onPressed: () => Navigator.of(context).pushNamed(AppRoutes.history),
             icon: const Icon(Icons.history_rounded),
-            tooltip: AppStrings.myRecords,
+            tooltip: context.l10n.tr('myRecords'),
           ),
           IconButton(
-            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
+            onPressed: () =>
+                Navigator.of(context).pushNamed(AppRoutes.settings),
             icon: const Icon(Icons.settings_outlined),
-            tooltip: AppStrings.settingsEntry,
+            tooltip: context.l10n.tr('settingsEntry'),
           ),
         ],
       ),
@@ -183,10 +186,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 gradient: LinearGradient(
-                  colors: <Color>[
-                    AppTheme.brandGreen,
-                    AppTheme.brandGreenDeep,
-                  ],
+                  colors: <Color>[AppTheme.brandGreen, AppTheme.brandGreenDeep],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -209,8 +209,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                       color: Colors.white.withValues(alpha: 0.10),
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.all(22),
+                  Padding(
+                    padding: const EdgeInsets.all(22),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -219,7 +219,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              AppStrings.takePhoto,
+                              context.l10n.tr('takePhoto'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 21,
@@ -228,7 +228,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ),
                             SizedBox(height: 6),
                             Text(
-                              '对准花朵，让花占满取景框',
+                              context.l10n.tr('aimFlower'),
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 13,
@@ -238,11 +238,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                         Row(
                           children: <Widget>[
-                            Icon(Icons.camera_alt_rounded,
-                                color: Colors.white, size: 18),
+                            Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                             SizedBox(width: 6),
                             Text(
-                              '立即拍摄',
+                              context.l10n.tr('shootNow'),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
@@ -273,13 +276,16 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: Row(
                 children: <Widget>[
                   const SizedBox(width: 20),
-                  Icon(Icons.photo_library_outlined,
-                      color: scheme.primary, size: 22),
+                  Icon(
+                    Icons.photo_library_outlined,
+                    color: scheme.primary,
+                    size: 22,
+                  ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      AppStrings.pickFromGallery,
-                      style: TextStyle(
+                      context.l10n.tr('pickFromGallery'),
+                      style: const TextStyle(
                         fontSize: 15.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -292,8 +298,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   else
-                    Icon(Icons.chevron_right_rounded,
-                        color: scheme.onSurfaceVariant),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   const SizedBox(width: 16),
                 ],
               ),
@@ -316,14 +324,16 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           children: <Widget>[
             _StatusRow(
-              label: '识别引擎',
-              value: settings.engine.label,
+              label: context.l10n.tr('recogEngine'),
+              value: context.l10n.engine(settings.engine.id),
               ok: engineOk,
             ),
             const SizedBox(height: 8),
             _StatusRow(
-              label: '内容生成',
-              value: llmOk ? settings.llm.model : '未配置，将使用内置词典',
+              label: context.l10n.tr('contentGen'),
+              value: llmOk
+                  ? settings.llm.model
+                  : context.l10n.tr('notConfiguredUseBuiltin'),
               ok: llmOk,
             ),
             if (!engineOk || !llmOk) ...<Widget>[
@@ -334,7 +344,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onPressed: () =>
                       Navigator.of(context).pushNamed(AppRoutes.settings),
                   icon: const Icon(Icons.tune_rounded, size: 18),
-                  label: const Text('去配置'),
+                  label: Text(context.l10n.tr('goConfig')),
                 ),
               ),
             ],
@@ -355,10 +365,10 @@ class _HomePageState extends ConsumerState<HomePage> {
       error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
       data: (items) {
         if (items.isEmpty) {
-          return const SliverToBoxAdapter(
+          return SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: EmptyState(message: AppStrings.emptyRecent),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: EmptyState(message: context.l10n.tr('emptyRecent')),
             ),
           );
         }
@@ -417,7 +427,10 @@ class _StatusRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 9),
-        Text(label, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -459,7 +472,10 @@ class _RecentTile extends StatelessWidget {
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),

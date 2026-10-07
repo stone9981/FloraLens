@@ -1,9 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../core/constants.dart';
+import '../l10n/app_localizations.dart';
 
 /// 分享卡片水印用的位置获取。
 ///
@@ -18,22 +19,19 @@ class LocationService {
       p == LocationPermission.always || p == LocationPermission.whileInUse;
 
   /// 取位置的结果：成功时 [label] 非空（如「深圳市 南山区」）；
-  /// 失败时 [label] 为 null、[error] 给出中文原因，便于提示用户到底卡在哪一步。
-  static const LocationResult _serviceOff =
-      LocationResult(error: AppStrings.locationServiceOff);
-  static const LocationResult _permissionDenied =
-      LocationResult(error: AppStrings.locationPermissionDenied);
-  static const LocationResult _noFix =
-      LocationResult(error: AppStrings.locationNoFix);
-  static const LocationResult _generic =
-      LocationResult(error: AppStrings.locationUnavailable);
-
-  /// 返回形如「深圳市 南山区」的地点标签；不可用则返回带原因的 [LocationResult]。
-  static Future<LocationResult> placeLabel() async {
+  /// 失败时 [label] 为 null、[error] 给出本地化原因，便于提示用户到底卡在哪一步。
+  ///
+  /// [l10n] 不传时按设备语言解析（非中文回退英文）。
+  static Future<LocationResult> placeLabel({AppLocalizations? l10n}) async {
+    l10n ??= AppLocalizations(
+      AppLocalizations.resolve(
+        WidgetsBinding.instance.platformDispatcher.locale,
+      ),
+    );
     try {
       // 1) 系统定位服务是否开启——没开就别傻等 12s 超时，直接提示。
       if (!await Geolocator.isLocationServiceEnabled()) {
-        return _serviceOff;
+        return LocationResult(error: l10n.tr('locationServiceOff'));
       }
 
       // 2) 权限：被拒（含永久拒绝）直接返回，不抛异常、不打断。
@@ -41,7 +39,9 @@ class LocationService {
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
-      if (!_allowed(perm)) return _permissionDenied;
+      if (!_allowed(perm)) {
+        return LocationResult(error: l10n.tr('locationPermissionDenied'));
+      }
 
       // 3) 取当前定位：12s 超时则回落到「最近一次已知位置」，都拿不到才认输。
       Position? pos;
@@ -55,7 +55,7 @@ class LocationService {
       } on TimeoutException {
         pos = await Geolocator.getLastKnownPosition();
       }
-      if (pos == null) return _noFix;
+      if (pos == null) return LocationResult(error: l10n.tr('locationNoFix'));
 
       // 4) 逆地理编码：需要网络 + GMS，失败就退化为经纬度兜底，不报错。
       try {
@@ -81,7 +81,7 @@ class LocationService {
         '${pos.latitude.toStringAsFixed(2)}, ${pos.longitude.toStringAsFixed(2)}',
       );
     } catch (_) {
-      return _generic;
+      return LocationResult(error: l10n.tr('locationUnavailable'));
     }
   }
 }

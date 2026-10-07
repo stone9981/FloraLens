@@ -15,11 +15,12 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 /// 全局设置状态。
 ///
 /// 任何字段变更后立刻落盘，保证进程被系统杀掉也不丢配置。
-final settingsProvider =
-    StateNotifierProvider<SettingsController, AppSettings>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return SettingsController(prefs);
-});
+final settingsProvider = StateNotifierProvider<SettingsController, AppSettings>(
+  (ref) {
+    final prefs = ref.watch(sharedPreferencesProvider);
+    return SettingsController(prefs);
+  },
+);
 
 class SettingsController extends StateNotifier<AppSettings> {
   SettingsController(this._prefs) : super(_load(_prefs));
@@ -67,6 +68,7 @@ class SettingsController extends StateNotifier<AppSettings> {
     bool? hdExport,
     int? maxHistory,
     bool? onboarded,
+    String? language,
   }) async {
     state = state.copyWith(
       engine: engine,
@@ -89,6 +91,7 @@ class SettingsController extends StateNotifier<AppSettings> {
       hdExport: hdExport,
       maxHistory: maxHistory,
       onboarded: onboarded,
+      language: language,
     );
     await _persist();
   }
@@ -117,6 +120,8 @@ class SettingsController extends StateNotifier<AppSettings> {
 
   Future<void> setCardTemplate(CardTemplate template) =>
       patch(cardTemplate: template);
+
+  Future<void> setLanguage(String language) => patch(language: language);
 
   Future<void> completeOnboarding() => patch(onboarded: true);
 

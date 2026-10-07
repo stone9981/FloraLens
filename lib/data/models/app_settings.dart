@@ -2,6 +2,33 @@ import 'package:flutter/material.dart';
 
 import 'plant.dart';
 
+/// 界面语言选项。
+///
+/// - [system]：跟随系统，设备语言非中文时一律回退英文（满足「其他区域默认英文」）。
+/// - [zh]：简体中文。
+/// - [en]：英文。
+enum AppLanguage {
+  system('system'),
+  zh('zh'),
+  en('en');
+
+  const AppLanguage(this.id);
+
+  final String id;
+
+  /// 用于 [MaterialApp.locale] 的实际 Locale；system 返回 null 让 Flutter 跟随设备。
+  Locale? get locale => switch (this) {
+    AppLanguage.zh => const Locale('zh'),
+    AppLanguage.en => const Locale('en'),
+    AppLanguage.system => null,
+  };
+
+  static AppLanguage fromId(String? id) => AppLanguage.values.firstWhere(
+    (l) => l.id == id,
+    orElse: () => AppLanguage.system,
+  );
+}
+
 /// 置信度回落时，优先请哪一家做复核。
 ///
 /// 只在识别引擎选了「视觉大模型」时生效：视觉模型泛化强但可能「硬编」品种，
@@ -78,110 +105,109 @@ class LlmPreset {
   static const String customId = 'custom';
 
   static List<LlmPreset> get presets => const <LlmPreset>[
-        LlmPreset(
-          id: 'deepseek',
-          name: 'DeepSeek',
-          baseUrl: 'https://api.deepseek.com/v1',
-          defaultModel: 'deepseek-chat',
-          models: <String>['deepseek-chat', 'deepseek-reasoner'],
-          hint: '中文植物知识扎实，性价比最高，推荐首选',
-        ),
-        LlmPreset(
-          id: 'agnes',
-          name: 'Agnes AI（注册即免费）',
-          baseUrl: 'https://apihub.agnes-ai.com/v1',
-          defaultModel: 'agnes-2.5-flash',
-          models: <String>[
-            'agnes-2.5-flash',
-            'agnes-2.0-flash',
-            'agnes-image-2.1-flash',
-          ],
-          visionModels: <String>['agnes-2.5-flash', 'agnes-2.0-flash'],
-          supportsVision: true,
-          hint: '邮箱注册即免费、无需绑卡，识别与文案共用 agnes-2.5-flash；'
-              '国内若访问慢，可把 Base URL 换成 https://apihub.agnes-ai.cn/v1',
-        ),
-        LlmPreset(
-          id: 'qwen',
-          name: '通义千问',
-          baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-          defaultModel: 'qwen-plus',
-          models: <String>['qwen-plus', 'qwen-turbo', 'qwen-max'],
-          visionModels: <String>['qwen-vl-max', 'qwen-vl-plus'],
-          supportsVision: true,
-          hint: '阿里 DashScope 兼容模式，国内速度快',
-        ),
-        LlmPreset(
-          id: 'glm',
-          name: '智谱 GLM',
-          baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-          defaultModel: 'glm-4-flash',
-          models: <String>['glm-4-flash', 'glm-4-plus', 'glm-4-air'],
-          visionModels: <String>['glm-4.5v', 'glm-4v-flash'],
-          supportsVision: true,
-          hint: 'glm-4-flash 长期免费',
-        ),
-        LlmPreset(
-          id: 'moonshot',
-          name: 'Kimi (Moonshot)',
-          baseUrl: 'https://api.moonshot.cn/v1',
-          defaultModel: 'moonshot-v1-8k',
-          models: <String>['moonshot-v1-8k', 'moonshot-v1-32k'],
-          visionModels: <String>['moonshot-v1-8k-vision-preview'],
-          supportsVision: true,
-        ),
-        LlmPreset(
-          id: 'doubao',
-          name: '火山方舟 (豆包)',
-          baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-          defaultModel: 'doubao-pro-32k',
-          models: <String>['doubao-pro-32k', 'doubao-lite-32k'],
-          visionModels: <String>['doubao-vision-pro-32k', 'doubao-vision-lite-32k'],
-          supportsVision: true,
-        ),
-        LlmPreset(
-          id: 'openai',
-          name: 'OpenAI',
-          baseUrl: 'https://api.openai.com/v1',
-          defaultModel: 'gpt-4o-mini',
-          models: <String>['gpt-4o-mini', 'gpt-4o'],
-          visionModels: <String>['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini'],
-          supportsVision: true,
-        ),
-        LlmPreset(
-          id: 'ollama',
-          name: 'Ollama（本地/局域网）',
-          baseUrl: 'http://192.168.1.100:11434/v1',
-          defaultModel: 'qwen2.5:7b',
-          models: <String>['qwen2.5:7b', 'llama3.1:8b', 'gemma2:9b'],
-          visionModels: <String>['qwen3-vl:8b', 'llava:latest', 'internvl3:latest'],
-          supportsVision: true,
-          isLocal: true,
-          hint: '手机请把 localhost 换成电脑的局域网 IP，并确保同一 WiFi 下',
-        ),
-        LlmPreset(
-          id: 'llamacpp',
-          name: 'llama.cpp / LM Studio',
-          baseUrl: 'http://192.168.1.100:8080/v1',
-          defaultModel: 'local-model',
-          visionModels: <String>['vision-model'],
-          supportsVision: true,
-          isLocal: true,
-          hint: '任何 OpenAI 兼容的本地推理服务都填这里',
-        ),
-        LlmPreset(
-          id: customId,
-          name: '自定义 OpenAI 兼容端点',
-          baseUrl: '',
-          defaultModel: '',
-          hint: '任意实现了 /chat/completions 的网关',
-        ),
-      ];
+    LlmPreset(
+      id: 'deepseek',
+      name: 'DeepSeek',
+      baseUrl: 'https://api.deepseek.com/v1',
+      defaultModel: 'deepseek-chat',
+      models: <String>['deepseek-chat', 'deepseek-reasoner'],
+      hint: '中文植物知识扎实，性价比最高，推荐首选',
+    ),
+    LlmPreset(
+      id: 'agnes',
+      name: 'Agnes AI（注册即免费）',
+      baseUrl: 'https://apihub.agnes-ai.com/v1',
+      defaultModel: 'agnes-2.5-flash',
+      models: <String>[
+        'agnes-2.5-flash',
+        'agnes-2.0-flash',
+        'agnes-image-2.1-flash',
+      ],
+      visionModels: <String>['agnes-2.5-flash', 'agnes-2.0-flash'],
+      supportsVision: true,
+      hint:
+          '邮箱注册即免费、无需绑卡，识别与文案共用 agnes-2.5-flash；'
+          '国内若访问慢，可把 Base URL 换成 https://apihub.agnes-ai.cn/v1',
+    ),
+    LlmPreset(
+      id: 'qwen',
+      name: '通义千问',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      defaultModel: 'qwen-plus',
+      models: <String>['qwen-plus', 'qwen-turbo', 'qwen-max'],
+      visionModels: <String>['qwen-vl-max', 'qwen-vl-plus'],
+      supportsVision: true,
+      hint: '阿里 DashScope 兼容模式，国内速度快',
+    ),
+    LlmPreset(
+      id: 'glm',
+      name: '智谱 GLM',
+      baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+      defaultModel: 'glm-4-flash',
+      models: <String>['glm-4-flash', 'glm-4-plus', 'glm-4-air'],
+      visionModels: <String>['glm-4.5v', 'glm-4v-flash'],
+      supportsVision: true,
+      hint: 'glm-4-flash 长期免费',
+    ),
+    LlmPreset(
+      id: 'moonshot',
+      name: 'Kimi (Moonshot)',
+      baseUrl: 'https://api.moonshot.cn/v1',
+      defaultModel: 'moonshot-v1-8k',
+      models: <String>['moonshot-v1-8k', 'moonshot-v1-32k'],
+      visionModels: <String>['moonshot-v1-8k-vision-preview'],
+      supportsVision: true,
+    ),
+    LlmPreset(
+      id: 'doubao',
+      name: '火山方舟 (豆包)',
+      baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+      defaultModel: 'doubao-pro-32k',
+      models: <String>['doubao-pro-32k', 'doubao-lite-32k'],
+      visionModels: <String>['doubao-vision-pro-32k', 'doubao-vision-lite-32k'],
+      supportsVision: true,
+    ),
+    LlmPreset(
+      id: 'openai',
+      name: 'OpenAI',
+      baseUrl: 'https://api.openai.com/v1',
+      defaultModel: 'gpt-4o-mini',
+      models: <String>['gpt-4o-mini', 'gpt-4o'],
+      visionModels: <String>['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini'],
+      supportsVision: true,
+    ),
+    LlmPreset(
+      id: 'ollama',
+      name: 'Ollama（本地/局域网）',
+      baseUrl: 'http://192.168.1.100:11434/v1',
+      defaultModel: 'qwen2.5:7b',
+      models: <String>['qwen2.5:7b', 'llama3.1:8b', 'gemma2:9b'],
+      visionModels: <String>['qwen3-vl:8b', 'llava:latest', 'internvl3:latest'],
+      supportsVision: true,
+      isLocal: true,
+      hint: '手机请把 localhost 换成电脑的局域网 IP，并确保同一 WiFi 下',
+    ),
+    LlmPreset(
+      id: 'llamacpp',
+      name: 'llama.cpp / LM Studio',
+      baseUrl: 'http://192.168.1.100:8080/v1',
+      defaultModel: 'local-model',
+      visionModels: <String>['vision-model'],
+      supportsVision: true,
+      isLocal: true,
+      hint: '任何 OpenAI 兼容的本地推理服务都填这里',
+    ),
+    LlmPreset(
+      id: customId,
+      name: '自定义 OpenAI 兼容端点',
+      baseUrl: '',
+      defaultModel: '',
+      hint: '任意实现了 /chat/completions 的网关',
+    ),
+  ];
 
-  static LlmPreset byId(String id) => presets.firstWhere(
-        (p) => p.id == id,
-        orElse: () => presets.first,
-      );
+  static LlmPreset byId(String id) =>
+      presets.firstWhere((p) => p.id == id, orElse: () => presets.first);
 }
 
 /// 大模型连接配置。
@@ -233,24 +259,24 @@ class LlmConfig {
   }
 
   factory LlmConfig.fromJson(Map<String, dynamic> json) => LlmConfig(
-        presetId: (json['presetId'] as String?) ?? 'deepseek',
-        baseUrl: (json['baseUrl'] as String?) ?? '',
-        apiKey: (json['apiKey'] as String?) ?? '',
-        model: (json['model'] as String?) ?? '',
-        temperature: (json['temperature'] as num?)?.toDouble() ?? 0.7,
-        enabled: (json['enabled'] as bool?) ?? true,
-        timeoutSeconds: (json['timeoutSeconds'] as num?)?.toInt() ?? 45,
-      );
+    presetId: (json['presetId'] as String?) ?? 'deepseek',
+    baseUrl: (json['baseUrl'] as String?) ?? '',
+    apiKey: (json['apiKey'] as String?) ?? '',
+    model: (json['model'] as String?) ?? '',
+    temperature: (json['temperature'] as num?)?.toDouble() ?? 0.7,
+    enabled: (json['enabled'] as bool?) ?? true,
+    timeoutSeconds: (json['timeoutSeconds'] as num?)?.toInt() ?? 45,
+  );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'presetId': presetId,
-        'baseUrl': baseUrl,
-        'apiKey': apiKey,
-        'model': model,
-        'temperature': temperature,
-        'enabled': enabled,
-        'timeoutSeconds': timeoutSeconds,
-      };
+    'presetId': presetId,
+    'baseUrl': baseUrl,
+    'apiKey': apiKey,
+    'model': model,
+    'temperature': temperature,
+    'enabled': enabled,
+    'timeoutSeconds': timeoutSeconds,
+  };
 }
 
 /// 分享卡片模板样式。
@@ -266,9 +292,9 @@ enum CardTemplate {
   final String label;
 
   static CardTemplate fromId(String? id) => CardTemplate.values.firstWhere(
-        (t) => t.id == id,
-        orElse: () => CardTemplate.magazine,
-      );
+    (t) => t.id == id,
+    orElse: () => CardTemplate.magazine,
+  );
 }
 
 /// 应用全局设置。
@@ -294,6 +320,7 @@ class AppSettings {
     this.hdExport = true,
     this.maxHistory = 200,
     this.onboarded = false,
+    this.language = 'system',
   });
 
   final EngineType engine;
@@ -326,6 +353,9 @@ class AppSettings {
   final bool hdExport;
   final int maxHistory;
   final bool onboarded;
+
+  /// 界面语言：'system' / 'zh' / 'en'。默认跟随系统（非中文区域回退英文）。
+  final String language;
 
   /// 当前所选引擎是否具备可用凭据。
   bool get engineReady {
@@ -436,6 +466,7 @@ class AppSettings {
     bool? hdExport,
     int? maxHistory,
     bool? onboarded,
+    String? language,
   }) {
     return AppSettings(
       engine: engine ?? this.engine,
@@ -460,6 +491,7 @@ class AppSettings {
       hdExport: hdExport ?? this.hdExport,
       maxHistory: maxHistory ?? this.maxHistory,
       onboarded: onboarded ?? this.onboarded,
+      language: language ?? this.language,
     );
   }
 
@@ -486,53 +518,55 @@ class AppSettings {
   }
 
   factory AppSettings.fromJson(Map<String, dynamic> json) => AppSettings(
-        engine: EngineType.fromId(json['engine'] as String?),
-        plantIdKey: (json['plantIdKey'] as String?) ?? '',
-        plantNetKey: (json['plantNetKey'] as String?) ?? '',
-        kindwiseKey: (json['kindwiseKey'] as String?) ?? '',
-        customEndpoint: (json['customEndpoint'] as String?) ?? '',
-        customApiKey: (json['customApiKey'] as String?) ?? '',
-        llm: json['llm'] != null
-            ? LlmConfig.fromJson(json['llm'] as Map<String, dynamic>)
-            : const LlmConfig(),
-        visionModel: (json['visionModel'] as String?) ?? '',
-        hybridFallback: (json['hybridFallback'] as bool?) ?? true,
-        hybridThreshold: HybridSettings.clampThreshold(
-            (json['hybridThreshold'] as num?)?.toDouble() ??
-                HybridSettings.defaultThreshold),
-        hybridSource: HybridFallbackSource.fromId(json['hybridSource'] as String?),
-        themeMode: themeModeFromId(json['themeMode'] as String?),
-        cardTemplate: CardTemplate.fromId(json['cardTemplate'] as String?),
-        watermark:
-            (json['watermark'] as String?) ?? AppSettings().watermark,
-        watermarkLocation: (json['watermarkLocation'] as bool?) ?? false,
-        autoSaveCard: (json['autoSaveCard'] as bool?) ?? false,
-        saveOriginalPhoto: (json['saveOriginalPhoto'] as bool?) ?? true,
-        hdExport: (json['hdExport'] as bool?) ?? true,
-        maxHistory: (json['maxHistory'] as num?)?.toInt() ?? 200,
-        onboarded: (json['onboarded'] as bool?) ?? false,
-      );
+    engine: EngineType.fromId(json['engine'] as String?),
+    plantIdKey: (json['plantIdKey'] as String?) ?? '',
+    plantNetKey: (json['plantNetKey'] as String?) ?? '',
+    kindwiseKey: (json['kindwiseKey'] as String?) ?? '',
+    customEndpoint: (json['customEndpoint'] as String?) ?? '',
+    customApiKey: (json['customApiKey'] as String?) ?? '',
+    llm: json['llm'] != null
+        ? LlmConfig.fromJson(json['llm'] as Map<String, dynamic>)
+        : const LlmConfig(),
+    visionModel: (json['visionModel'] as String?) ?? '',
+    hybridFallback: (json['hybridFallback'] as bool?) ?? true,
+    hybridThreshold: HybridSettings.clampThreshold(
+      (json['hybridThreshold'] as num?)?.toDouble() ??
+          HybridSettings.defaultThreshold,
+    ),
+    hybridSource: HybridFallbackSource.fromId(json['hybridSource'] as String?),
+    themeMode: themeModeFromId(json['themeMode'] as String?),
+    cardTemplate: CardTemplate.fromId(json['cardTemplate'] as String?),
+    watermark: (json['watermark'] as String?) ?? AppSettings().watermark,
+    watermarkLocation: (json['watermarkLocation'] as bool?) ?? false,
+    autoSaveCard: (json['autoSaveCard'] as bool?) ?? false,
+    saveOriginalPhoto: (json['saveOriginalPhoto'] as bool?) ?? true,
+    hdExport: (json['hdExport'] as bool?) ?? true,
+    maxHistory: (json['maxHistory'] as num?)?.toInt() ?? 200,
+    onboarded: (json['onboarded'] as bool?) ?? false,
+    language: (json['language'] as String?) ?? 'system',
+  );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'engine': engine.id,
-        'plantIdKey': plantIdKey,
-        'plantNetKey': plantNetKey,
-        'kindwiseKey': kindwiseKey,
-        'customEndpoint': customEndpoint,
-        'customApiKey': customApiKey,
-        'llm': llm.toJson(),
-        'visionModel': visionModel,
-        'hybridFallback': hybridFallback,
-        'hybridThreshold': hybridThreshold,
-        'hybridSource': hybridSource.id,
-        'themeMode': themeModeToId(themeMode),
-        'cardTemplate': cardTemplate.id,
-        'watermark': watermark,
-        'watermarkLocation': watermarkLocation,
-        'autoSaveCard': autoSaveCard,
-        'saveOriginalPhoto': saveOriginalPhoto,
-        'hdExport': hdExport,
-        'maxHistory': maxHistory,
-        'onboarded': onboarded,
-      };
+    'engine': engine.id,
+    'plantIdKey': plantIdKey,
+    'plantNetKey': plantNetKey,
+    'kindwiseKey': kindwiseKey,
+    'customEndpoint': customEndpoint,
+    'customApiKey': customApiKey,
+    'llm': llm.toJson(),
+    'visionModel': visionModel,
+    'hybridFallback': hybridFallback,
+    'hybridThreshold': hybridThreshold,
+    'hybridSource': hybridSource.id,
+    'themeMode': themeModeToId(themeMode),
+    'cardTemplate': cardTemplate.id,
+    'watermark': watermark,
+    'watermarkLocation': watermarkLocation,
+    'autoSaveCard': autoSaveCard,
+    'saveOriginalPhoto': saveOriginalPhoto,
+    'hdExport': hdExport,
+    'maxHistory': maxHistory,
+    'onboarded': onboarded,
+    'language': language,
+  };
 }

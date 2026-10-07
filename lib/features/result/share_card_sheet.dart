@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/baike.dart';
-import '../../core/constants.dart';
 import '../../core/result.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/local/settings_store.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/history_provider.dart';
 import '../../services/card_capture_service.dart';
 import '../../services/share_service.dart';
@@ -57,7 +57,7 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
       _locating = false;
     });
     if (result.label == null && ref.read(settingsProvider).watermarkLocation) {
-      _toast(result.error ?? AppStrings.locationUnavailable);
+      _toast(result.error ?? context.l10n.tr('locationUnavailable'));
     }
   }
 
@@ -68,9 +68,9 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
     final uri = Baike.itemUrl(name);
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.inAppWebView);
-      if (!ok && mounted) _toast(AppStrings.cannotOpenBaike);
+      if (!ok && mounted) _toast(context.l10n.tr('cannotOpenBaike'));
     } catch (_) {
-      if (mounted) _toast(AppStrings.cannotOpenBaike);
+      if (mounted) _toast(context.l10n.tr('cannotOpenBaike'));
     }
   }
 
@@ -83,14 +83,15 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
   Future<String?> _export() async {
     setState(() => _busy = true);
     try {
-      final r = await CardCaptureService.captureToFile(
-        _cardKey,
-        pixelRatio: 3,
-      );
+      final r = await CardCaptureService.captureToFile(_cardKey, pixelRatio: 3);
       final path = r.value;
       if (path == null) {
         final err = r.error;
-        _toast(err is AppException ? err.message : '导出失败');
+        _toast(
+          err is AppException
+              ? context.l10n.tr('exportFailed', <String>[err.message])
+              : context.l10n.tr('exportFailed', <String>['']),
+        );
         return null;
       }
       _lastPath = path;
@@ -108,7 +109,7 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
     if (path == null) return;
     final r = await ShareService.saveToGallery(path);
     r.when(
-      ok: (_) => _toast(AppStrings.savedSuccess),
+      ok: (_) => _toast(context.l10n.tr('savedSuccess')),
       err: (e) => _toast(e.message),
     );
   }
@@ -165,9 +166,11 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
               child: Row(
                 children: <Widget>[
                   Text(
-                    AppStrings.cardTitle,
+                    context.l10n.tr('cardTitle'),
                     style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w700),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -188,7 +191,7 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
                   final t = CardTemplate.values[index];
                   final selected = t == _template;
                   return ChoiceChip(
-                    label: Text(t.label),
+                    label: Text(context.l10n.cardTpl(t.id)),
                     selected: selected,
                     onSelected: (_) => _switchTemplate(t),
                   );
@@ -203,10 +206,14 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
                   child: Transform.scale(
                     scale: scale,
                     alignment: Alignment.topCenter,
-                child: RepaintBoundary(
-                  key: _cardKey,
-                  child: buildShareCard(_template, data, onNameTap: _openBaike),
-                ),
+                    child: RepaintBoundary(
+                      key: _cardKey,
+                      child: buildShareCard(
+                        _template,
+                        data,
+                        onNameTap: _openBaike,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -216,8 +223,11 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
               child: Column(
                 children: <Widget>[
                   Text(
-                    AppStrings.shareMomentsTip,
-                    style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                    context.l10n.tr('shareMomentsTip'),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   if (settings.watermarkLocation && _locating)
                     Padding(
@@ -231,9 +241,13 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
                             child: CircularProgressIndicator(strokeWidth: 1.5),
                           ),
                           const SizedBox(width: 6),
-                          Text('正在获取定位…',
-                              style: TextStyle(
-                                  fontSize: 11, color: scheme.onSurfaceVariant)),
+                          Text(
+                            context.l10n.tr('locating'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -242,7 +256,7 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
                     children: <Widget>[
                       Expanded(
                         child: PrimaryButton(
-                          label: AppStrings.saveToGallery,
+                          label: context.l10n.tr('saveToGallery'),
                           icon: Icons.download_rounded,
                           outlined: true,
                           loading: _busy,
@@ -252,7 +266,7 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: PrimaryButton(
-                          label: AppStrings.shareTo,
+                          label: context.l10n.tr('shareTo'),
                           icon: Icons.ios_share_rounded,
                           loading: _busy,
                           onPressed: _busy ? null : _share,

@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../data/local/config_backup.dart';
 import '../../data/local/history_backup.dart';
 import '../../data/models/history_item.dart';
 import '../../data/models/plant_profile.dart';
 import '../../data/local/settings_store.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/history_provider.dart';
 import '../../widgets/common.dart';
 import '../result/card_templates.dart';
@@ -70,16 +70,16 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('清空全部记录？'),
-        content: const Text('已保存的图片与卡片也会一并删除，此操作不可恢复。'),
+        title: Text(context.l10n.tr('clearAllTitle')),
+        content: Text(context.l10n.tr('clearAllBody')),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(context.l10n.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(AppStrings.delete),
+            child: Text(context.l10n.tr('delete')),
           ),
         ],
       ),
@@ -94,16 +94,18 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('删除选中的 $n 项？'),
-        content: const Text('这些记录与图片会一并删除，此操作不可恢复。'),
+        title: Text(
+          context.l10n.tr('deleteSelectedTitle', <String>[n.toString()]),
+        ),
+        content: Text(context.l10n.tr('deleteSelectedBody')),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(context.l10n.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(AppStrings.delete),
+            child: Text(context.l10n.tr('delete')),
           ),
         ],
       ),
@@ -125,10 +127,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     if (chosen.isEmpty) return;
 
     final info = await PackageInfo.fromPlatform();
-    final text = HistoryBackup.encode(
-      chosen,
-      appVersion: info.version,
-    );
+    final text = HistoryBackup.encode(chosen, appVersion: info.version);
     final path = await ConfigBackup.writeToTemp(
       text,
       HistoryBackup.fileNameFor(DateTime.now()),
@@ -136,13 +135,14 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     await SharePlus.instance.share(
       ShareParams(
         files: <XFile>[XFile(path, mimeType: 'application/json')],
-        subject: '花识 FloraLens 记录导出',
-        text: AppStrings.historyExportNote,
+        subject: 'FloraLens Records Export',
+        text: context.l10n.tr('historyExportNote'),
       ),
     );
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text(AppStrings.historyExported)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.tr('historyExported'))),
+      );
     }
   }
 
@@ -157,7 +157,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         data: ShareCardData(
           imagePath: item.imagePath,
           candidate: item.candidate,
-          profile: item.profile ??
+          profile:
+              item.profile ??
               PlantProfile.offline(
                 scientificName: item.candidate.scientificName,
                 title: item.candidate.displayName,
@@ -177,13 +178,17 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     return Scaffold(
       appBar: AppBar(
         title: _selectionMode
-            ? Text('已选 ${_selected.length} 项')
-            : const Text(AppStrings.myRecords),
+            ? Text(
+                context.l10n.tr('selectedCount', <String>[
+                  _selected.length.toString(),
+                ]),
+              )
+            : Text(context.l10n.tr('myRecords')),
         leading: _selectionMode
             ? IconButton(
                 onPressed: _exitSelection,
                 icon: const Icon(Icons.close),
-                tooltip: AppStrings.historyCancelSelect,
+                tooltip: context.l10n.tr('historyCancelSelect'),
               )
             : null,
         actions: <Widget>[
@@ -195,25 +200,25 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                     ? Icons.deselect
                     : Icons.select_all,
               ),
-              tooltip: AppStrings.historySelectAll,
+              tooltip: context.l10n.tr('historySelectAll'),
             ),
             IconButton(
-              onPressed:
-                  _selected.isEmpty ? null : () => _exportSelected(items),
+              onPressed: _selected.isEmpty
+                  ? null
+                  : () => _exportSelected(items),
               icon: const Icon(Icons.upload_outlined),
-              tooltip: AppStrings.historyExportSelected,
+              tooltip: context.l10n.tr('historyExportSelected'),
             ),
             IconButton(
-              onPressed:
-                  _selected.isEmpty ? null : _confirmDeleteSelected,
+              onPressed: _selected.isEmpty ? null : _confirmDeleteSelected,
               icon: const Icon(Icons.delete_outline),
-              tooltip: AppStrings.historyDeleteSelected,
+              tooltip: context.l10n.tr('historyDeleteSelected'),
             ),
           ] else ...<Widget>[
             IconButton(
               onPressed: _confirmClear,
               icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: '清空',
+              tooltip: context.l10n.tr('clearAll'),
             ),
           ],
         ],
@@ -222,11 +227,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         child: history.when(
           loading: () =>
               const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          error: (e, _) => const EmptyState(message: '读取记录失败'),
+          error: (e, _) =>
+              EmptyState(message: context.l10n.tr('readHistoryFailed')),
           data: (data) {
             if (data.isEmpty) {
-              return const EmptyState(
-                message: AppStrings.emptyRecent,
+              return EmptyState(
+                message: context.l10n.tr('emptyRecent'),
                 icon: Icons.photo_album_outlined,
               );
             }
@@ -243,7 +249,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                 itemCount: data.length,
                 itemBuilder: (context, index) {
                   final item = data[index];
-                  final selected = _selectionMode && _selected.contains(item.id);
+                  final selected =
+                      _selectionMode && _selected.contains(item.id);
                   return _HistoryTile(
                     item: item,
                     position: index,
@@ -332,7 +339,9 @@ class _HistoryTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 13.5, fontWeight: FontWeight.w600),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Row(
@@ -341,7 +350,9 @@ class _HistoryTile extends StatelessWidget {
                             child: Text(
                               '${item.createdAt.year}.${item.createdAt.month.toString().padLeft(2, '0')}.${item.createdAt.day.toString().padLeft(2, '0')}',
                               style: TextStyle(
-                                  fontSize: 11, color: scheme.onSurfaceVariant),
+                                fontSize: 11,
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 5),
@@ -353,10 +364,11 @@ class _HistoryTile extends StatelessWidget {
                             color: scheme.onSurfaceVariant,
                           ),
                           Text(
-                            item.source.label,
+                            context.l10n.source(item.source.id),
                             style: TextStyle(
-                                fontSize: 10.5,
-                                color: scheme.onSurfaceVariant),
+                              fontSize: 10.5,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),

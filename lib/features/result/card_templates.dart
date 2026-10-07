@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/models/plant.dart';
 import '../../data/models/plant_profile.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 卡片渲染所需的数据。
 class ShareCardData {
@@ -36,15 +36,14 @@ class ShareCardData {
     String? watermark,
     DateTime? date,
     VoidCallback? onNameTap,
-  }) =>
-      ShareCardData(
-        imagePath: imagePath ?? this.imagePath,
-        candidate: candidate ?? this.candidate,
-        profile: profile ?? this.profile,
-        watermark: watermark ?? this.watermark,
-        date: date ?? this.date,
-        onNameTap: onNameTap ?? this.onNameTap,
-      );
+  }) => ShareCardData(
+    imagePath: imagePath ?? this.imagePath,
+    candidate: candidate ?? this.candidate,
+    profile: profile ?? this.profile,
+    watermark: watermark ?? this.watermark,
+    date: date ?? this.date,
+    onNameTap: onNameTap ?? this.onNameTap,
+  );
 }
 
 /// 卡片基准宽度（逻辑像素）。导出时按 pixelRatio 放大，
@@ -52,13 +51,15 @@ class ShareCardData {
 const double cardWidth = 360;
 
 /// 卡片上展示的花名：优先用档案标题，回落到识别出的中文名。
-String _titleOf(ShareCardData data) =>
-    data.profile.title.isNotEmpty ? data.profile.title : data.candidate.displayName;
+String _titleOf(ShareCardData data) => data.profile.title.isNotEmpty
+    ? data.profile.title
+    : data.candidate.displayName;
 
 /// 花名可点击：实时预览里点一下跳百度百科，并带个「↗」小标记提示可点。
 ///
 /// [iconColor] 跟随各模板主色，避免夜色卡（白字）上看不清。
 Widget _tappableName(
+  BuildContext context,
   ShareCardData data, {
   required TextStyle style,
   required Color iconColor,
@@ -76,7 +77,7 @@ Widget _tappableName(
   return GestureDetector(
     onTap: onTap,
     child: Tooltip(
-      message: AppStrings.openBaike,
+      message: context.l10n.tr('openBaike'),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -91,10 +92,12 @@ Widget _tappableName(
 }
 
 /// 根据模板枚举构造对应卡片。
-Widget buildShareCard(CardTemplate template, ShareCardData data,
-    {VoidCallback? onNameTap}) {
-  final d =
-      onNameTap == null ? data : data.copyWith(onNameTap: onNameTap);
+Widget buildShareCard(
+  CardTemplate template,
+  ShareCardData data, {
+  VoidCallback? onNameTap,
+}) {
+  final d = onNameTap == null ? data : data.copyWith(onNameTap: onNameTap);
   switch (template) {
     case CardTemplate.magazine:
       return _MagazineCard(data: d);
@@ -110,8 +113,12 @@ Widget buildShareCard(CardTemplate template, ShareCardData data,
 String _formatDate(DateTime d) =>
     '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
-Widget _photo(ShareCardData data,
-    {double height = 360, BorderRadius? radius, BoxFit fit = BoxFit.cover}) {
+Widget _photo(
+  ShareCardData data, {
+  double height = 360,
+  BorderRadius? radius,
+  BoxFit fit = BoxFit.cover,
+}) {
   return ClipRRect(
     borderRadius: radius ?? BorderRadius.zero,
     child: data.imagePath.isEmpty
@@ -119,8 +126,11 @@ Widget _photo(ShareCardData data,
             height: height,
             width: cardWidth,
             color: const Color(0xFFE8ECE9),
-            child: const Icon(Icons.local_florist_outlined,
-                size: 64, color: Colors.white),
+            child: const Icon(
+              Icons.local_florist_outlined,
+              size: 64,
+              color: Colors.white,
+            ),
           )
         : Image.file(
             File(data.imagePath),
@@ -171,6 +181,7 @@ class _MagazineCard extends StatelessWidget {
                   ),
                 const SizedBox(height: 6),
                 _tappableName(
+                  context,
                   data,
                   iconColor: const Color(0xFF8A968F),
                   style: const TextStyle(
@@ -215,7 +226,7 @@ class _MagazineCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '花语 · ${p.language}',
+                          '${context.l10n.tr('languageLabel')} · ${p.language}',
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -242,8 +253,11 @@ class _MagazineCard extends StatelessWidget {
                 const SizedBox(height: 20),
                 Row(
                   children: <Widget>[
-                    const Icon(Icons.local_florist_rounded,
-                        size: 13, color: Color(0xFF9AA5A0)),
+                    const Icon(
+                      Icons.local_florist_rounded,
+                      size: 13,
+                      color: Color(0xFF9AA5A0),
+                    ),
                     const SizedBox(width: 5),
                     Expanded(
                       child: Text(
@@ -294,6 +308,7 @@ class _MinimalCard extends StatelessWidget {
           ),
           const SizedBox(height: 26),
           _tappableName(
+            context,
             data,
             textAlign: TextAlign.center,
             iconColor: const Color(0xFFA3ACA7),
@@ -335,21 +350,25 @@ class _MinimalCard extends StatelessWidget {
               runSpacing: 6,
               children: p.tags
                   .take(3)
-                  .map((t) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 11, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0F3F1),
-                          borderRadius: BorderRadius.circular(999),
+                  .map(
+                    (t) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F3F1),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        t,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF5E6B64),
                         ),
-                        child: Text(
-                          t,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF5E6B64),
-                          ),
-                        ),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ],
@@ -424,6 +443,7 @@ class _HerbariumCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   _tappableName(
+                    context,
                     data,
                     iconColor: const Color(0xFF9C9075),
                     style: const TextStyle(
@@ -448,10 +468,16 @@ class _HerbariumCard extends StatelessWidget {
                   Container(height: 1, color: const Color(0xFFDCD3B8)),
                   const SizedBox(height: 12),
                   if (data.candidate.familyGenus.isNotEmpty)
-                    _HerbRow('科属', data.candidate.familyGenus),
-                  if (p.bloomTime.isNotEmpty) _HerbRow('花期', p.bloomTime),
-                  if (p.origin.isNotEmpty) _HerbRow('产地', p.origin),
-                  if (p.language.isNotEmpty) _HerbRow('花语', p.language),
+                    _HerbRow(
+                      context.l10n.tr('mdFamily'),
+                      data.candidate.familyGenus,
+                    ),
+                  if (p.bloomTime.isNotEmpty)
+                    _HerbRow(context.l10n.tr('mdBloom'), p.bloomTime),
+                  if (p.origin.isNotEmpty)
+                    _HerbRow(context.l10n.tr('mdOrigin'), p.origin),
+                  if (p.language.isNotEmpty)
+                    _HerbRow(context.l10n.tr('mdFlowerLanguage'), p.language),
                   if (p.poemLine != null && p.poemLine!.isNotEmpty) ...<Widget>[
                     const SizedBox(height: 12),
                     Text(
@@ -546,8 +572,11 @@ class _NightCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.local_florist_rounded,
-                    size: 15, color: Color(0xFF7FD8B4)),
+                const Icon(
+                  Icons.local_florist_rounded,
+                  size: 15,
+                  color: Color(0xFF7FD8B4),
+                ),
                 const SizedBox(width: 7),
                 Text(
                   data.watermark,
@@ -574,6 +603,7 @@ class _NightCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _tappableName(
+                  context,
                   data,
                   iconColor: const Color(0xFF8FA79B),
                   style: const TextStyle(
@@ -599,13 +629,15 @@ class _NightCard extends StatelessWidget {
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '花语 · ${p.language}',
+                      '${context.l10n.tr('languageLabel')} · ${p.language}',
                       style: const TextStyle(
                         fontSize: 12.5,
                         color: Color(0xFFB7E4CE),
@@ -637,7 +669,9 @@ class _NightCard extends StatelessWidget {
                     Text(
                       _formatDate(data.date),
                       style: const TextStyle(
-                          fontSize: 10.5, color: Color(0xFF7A9086)),
+                        fontSize: 10.5,
+                        color: Color(0xFF7A9086),
+                      ),
                     ),
                   ],
                 ),

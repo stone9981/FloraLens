@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../core/result.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
 import '../models/plant.dart';
 import 'engines.dart';
@@ -25,10 +26,7 @@ abstract class IdentificationEngine {
 
 /// 引擎构造参数：从设置里取出对应凭据。
 class EngineCredentials {
-  const EngineCredentials({
-    required this.apiKey,
-    this.endpoint,
-  });
+  const EngineCredentials({required this.apiKey, this.endpoint});
 
   final String apiKey;
   final String? endpoint;
@@ -40,7 +38,10 @@ class EngineCredentials {
 class EngineFactory {
   EngineFactory._();
 
-  static IdentificationEngine create(AppSettings settings) {
+  static IdentificationEngine create(
+    AppSettings settings,
+    AppLocalizations l10n,
+  ) {
     final base = _createRaw(settings);
 
     // 视觉大模型可能「硬编」品种，置信度不够时让专用模型复核一次。
@@ -54,6 +55,7 @@ class EngineFactory {
       primary: base,
       fallback: fallback,
       threshold: settings.hybridThreshold,
+      l10n: l10n,
     );
   }
 
@@ -102,7 +104,8 @@ class EngineFactory {
 /// 各引擎共用的小工具。
 mixin EngineParsing {
   /// 生成 Plant.id / Kindwise 需要的 data URI。
-  String toDataUri(Uint8List bytes) => 'data:image/jpeg;base64,${base64Encode(bytes)}';
+  String toDataUri(Uint8List bytes) =>
+      'data:image/jpeg;base64,${base64Encode(bytes)}';
 
   /// 归一化置信度：不同服务商有的给 0~1，有的给 0~100。
   double normalizeConfidence(num? value) {

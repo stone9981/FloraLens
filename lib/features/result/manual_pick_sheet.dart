@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/plant.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/app_providers.dart';
 
 /// 手动纠正品种：当识别结果明显不对时，用内置词典搜索并覆盖。
 class ManualPickSheet extends ConsumerStatefulWidget {
-  const ManualPickSheet({
-    super.key,
-    this.current,
-    required this.onPicked,
-  });
+  const ManualPickSheet({super.key, this.current, required this.onPicked});
 
   final PlantCandidate? current;
   final void Function(PlantCandidate candidate) onPicked;
@@ -57,17 +54,20 @@ class _ManualPickSheetState extends ConsumerState<ManualPickSheet> {
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
               child: Row(
                 children: <Widget>[
-                  const Text(
-                    '选择正确品种',
-                    style:
-                        TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  Text(
+                    context.l10n.tr('pickCorrect'),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   const Spacer(),
                   if (widget.current != null)
                     Text(
-                      '当前：${widget.current!.displayName}',
+                      context.l10n.tr('currentIs', <String>[
+                        widget.current!.displayName,
+                      ]),
                       style: TextStyle(
-                          fontSize: 12, color: scheme.onSurfaceVariant),
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                 ],
               ),
@@ -79,7 +79,7 @@ class _ManualPickSheetState extends ConsumerState<ManualPickSheet> {
                 autofocus: false,
                 textInputAction: TextInputAction.search,
                 decoration: InputDecoration(
-                  hintText: '搜索花名，如「月季」「樱花」',
+                  hintText: context.l10n.tr('searchFlowerHint'),
                   prefixIcon: const Icon(Icons.search_rounded),
                   suffixIcon: _query.isEmpty
                       ? null
@@ -97,13 +97,15 @@ class _ManualPickSheetState extends ConsumerState<ManualPickSheet> {
             const SizedBox(height: 10),
             Expanded(
               child: library.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                error: (e, _) => const Center(child: Text('词典加载失败')),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                error: (e, _) =>
+                    Center(child: Text(context.l10n.tr('dictLoadFailed'))),
                 data: (lib) {
                   final results = lib.search(_query);
                   if (results.isEmpty) {
-                    return const Center(child: Text('没有匹配的品种'));
+                    return Center(child: Text(context.l10n.tr('noMatch')));
                   }
                   return ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -112,13 +114,18 @@ class _ManualPickSheetState extends ConsumerState<ManualPickSheet> {
                     itemBuilder: (context, index) {
                       final plant = results[index];
                       return ListTile(
-                        title: Text(plant.commonName,
-                            style: const TextStyle(fontSize: 14.5)),
+                        title: Text(
+                          plant.commonName,
+                          style: const TextStyle(fontSize: 14.5),
+                        ),
                         subtitle: Text(
                           '${plant.family}${plant.genus.isNotEmpty ? ' · ${plant.genus}' : ''}',
                           style: const TextStyle(fontSize: 11.5),
                         ),
-                        trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                        trailing: const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 18,
+                        ),
                         onTap: () => widget.onPicked(
                           PlantCandidate(
                             scientificName: plant.scientificName,
@@ -137,8 +144,13 @@ class _ManualPickSheetState extends ConsumerState<ManualPickSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: Text(
-                '内置 ${ref.watch(plantLibraryProvider).valueOrNull?.count ?? 0} 种常见花卉，选中后会重新生成介绍',
-                style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                context.l10n.tr('builtinCount', <String>[
+                  '${ref.watch(plantLibraryProvider).valueOrNull?.count ?? 0}',
+                ]),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],

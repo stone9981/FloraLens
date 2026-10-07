@@ -8,8 +8,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/constants.dart';
 import '../../core/routes.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/theme.dart';
 import '../../data/local/config_backup.dart';
 import '../../data/local/settings_store.dart';
@@ -62,8 +62,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     setState(() {
       _testing = false;
       _testResult = r.when(
-        ok: (text) => '${AppStrings.connectionOk}：${text.length > 20 ? '${text.substring(0, 20)}…' : text}',
-        err: (e) => '${AppStrings.connectionFailed}：${e.message}',
+        ok: (text) =>
+            '${context.l10n.tr('connectionOk')}：${text.length > 20 ? '${text.substring(0, 20)}…' : text}',
+        err: (e) => '${context.l10n.tr('connectionFailed')}：${e.message}',
       );
     });
   }
@@ -77,7 +78,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final preset = LlmPreset.byId(settings.llm.presetId);
     if (!preset.supportsVision && preset.id != LlmPreset.customId) {
       setState(() {
-        _visionResult = '这个服务商的默认模型可能不支持读图，识别时会自动改用下方「识别模型」里填的模型';
+        _visionResult = context.l10n.tr('visionMaybeUnsupported');
       });
     }
 
@@ -91,31 +92,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _testingVision = false;
       _visionResult = r.when(
         ok: (text) =>
-            '${AppStrings.connectionOk}：识别模型 ${settings.visionLlmConfig.model} 可用',
-        err: (e) => '连接失败：${e.message}',
+            '${context.l10n.tr('connectionOk')}：${context.l10n.tr('visionModelLabel')} ${settings.visionLlmConfig.model} ${context.l10n.tr('modelAvailable')}',
+        err: (e) => '${context.l10n.tr('connectionFailed')}：${e.message}',
       );
     });
   }
 
   String _visionHelp(AppSettings settings) {
+    final l10n = context.l10n;
     final preset = LlmPreset.byId(settings.llm.presetId);
     String text;
     if (preset.isLocal) {
-      text = '本地视觉模型（如 Ollama 的 qwen3-vl:8b）无需联网，但首次加载权重较慢。'
-          '识别用后会接着用文案模型写介绍，两者可以在下方配成不同模型。';
+      text = l10n.tr('localVisionNote');
     } else if (preset.id == LlmPreset.customId) {
-      text = '这里填任意支持读图的模型名。Base URL 与 Key 复用下方「大模型」的配置。'
-          'DeepSeek 官方模型没有视觉能力，不能直接当识别引擎用。';
+      text = l10n.tr('customVisionNote');
     } else {
-      text = '端点与 Key 复用下方「大模型」的配置，这里只换模型名。'
-          '建议识别用 ${preset.visionModels.isEmpty ? preset.defaultModel : preset.visionModels.first}，'
-          '文案仍用 ${preset.defaultModel}，两者分工最划算。';
+      text = l10n.tr('visionPresetNote', <String>[
+        preset.visionModels.isEmpty
+            ? preset.defaultModel
+            : preset.visionModels.first,
+        preset.defaultModel,
+      ]);
     }
 
     if (!settings.hybridFallback) return text;
     final fb = settings.effectiveFallbackEngine;
-    return '$text；把握不足 ${(settings.hybridThreshold * 100).round()}% 时，'
-        '${fb == null ? '没有可用的复核引擎，回落这项暂不生效' : '会自动请 $fb 复核'}。';
+    final tail = fb == null
+        ? l10n.tr('hybridNoFallback')
+        : l10n.tr('hybridCurrent', <String>[l10n.engine(fb.id)]);
+    return '${text}；${tail}';
   }
 
   /// 把当前设置打包成一个 JSON 文件，交给系统分享面板。
@@ -140,15 +145,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await SharePlus.instance.share(
         ShareParams(
           files: <XFile>[XFile(path, mimeType: 'application/json')],
-          subject: '花识 FloraLens 配置备份',
-          text: AppStrings.configExportNote,
+          subject: context.l10n.tr('configBackupSubject'),
+          text: context.l10n.tr('configExportNote'),
         ),
       );
       if (!mounted) return;
-      setState(() => _backupHint = AppStrings.configExported);
+      setState(() => _backupHint = context.l10n.tr('configExported'));
     } catch (e) {
       if (!mounted) return;
-      setState(() => _backupHint = '导出失败：$e');
+      setState(
+        () => _backupHint = context.l10n.tr('exportFailed', <String>['$e']),
+      );
     } finally {
       if (mounted) setState(() => _backupBusy = false);
     }
@@ -169,7 +176,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (path == null) return;
       if (!mounted) return;
 
-      final decoded = ConfigBackup.decode(await File(path).readAsString());
+      final decoded = ConfigBackup.decode(
+        await File(path).readAsString(),
+        l10n: context.l10n,
+      );
       final settings = decoded.settings;
       if (settings == null) {
         setState(() => _backupHint = decoded.error);
@@ -179,19 +189,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('导入这份配置？'),
-          content: const Text(
-            '会覆盖当前所有设置，包括各引擎的 API Key。'
-            '建议先导出一份当前配置备用。',
-          ),
+          title: Text(context.l10n.tr('importConfirmTitle')),
+          content: Text(context.l10n.tr('importConfirmBody')),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text(AppStrings.cancel),
+              child: Text(context.l10n.tr('cancel')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text(AppStrings.importConfig),
+              child: Text(context.l10n.tr('importConfig')),
             ),
           ],
         ),
@@ -201,10 +208,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
       await ref.read(settingsProvider.notifier).update(settings);
       if (!mounted) return;
-      setState(() => _backupHint = AppStrings.configImported);
+      setState(() => _backupHint = context.l10n.tr('configImported'));
     } catch (e) {
       if (!mounted) return;
-      setState(() => _backupHint = '导入失败：$e');
+      setState(
+        () => _backupHint = context.l10n.tr('importFailed', <String>['$e']),
+      );
     } finally {
       if (mounted) setState(() => _backupBusy = false);
     }
@@ -214,16 +223,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('恢复默认配置？'),
-        content: const Text('所有 API Key 与外观设置都会被清空。'),
+        title: Text(context.l10n.tr('resetConfirmTitle')),
+        content: Text(context.l10n.tr('resetWarn')),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(AppStrings.cancel),
+            child: Text(context.l10n.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(AppStrings.resetConfig),
+            child: Text(context.l10n.tr('resetConfig')),
           ),
         ],
       ),
@@ -232,7 +241,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (!mounted) return;
     await ref.read(settingsProvider.notifier).reset();
     if (!mounted) return;
-    setState(() => _backupHint = '已恢复默认配置');
+    setState(() => _backupHint = context.l10n.tr('resetDone'));
   }
 
   @override
@@ -241,27 +250,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final controller = ref.read(settingsProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.settingsTitle)),
+      appBar: AppBar(title: Text(context.l10n.tr('settingsTitle'))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
           children: <Widget>[
-            SectionTitle(AppStrings.recognitionSection),
+            SectionTitle(context.l10n.tr('recognitionSection')),
             _buildEngineSection(settings, controller),
             const SizedBox(height: 26),
-            SectionTitle(AppStrings.modelSection),
+            SectionTitle(context.l10n.tr('modelSection')),
             _buildLlmSection(settings, controller),
             const SizedBox(height: 26),
-            SectionTitle(AppStrings.appearanceSection),
+            SectionTitle(context.l10n.tr('appearanceSection')),
             _buildAppearance(settings, controller),
             const SizedBox(height: 26),
-            SectionTitle(AppStrings.backupSection),
+            SectionTitle(context.l10n.tr('languageSection')),
+            _buildLanguageSection(settings, controller),
+            const SizedBox(height: 26),
+            SectionTitle(context.l10n.tr('backupSection')),
             _buildBackupSection(),
             const SizedBox(height: 26),
-            SectionTitle('分享卡片'),
+            SectionTitle(context.l10n.tr('cardSection')),
             _buildCardSection(settings, controller),
             const SizedBox(height: 26),
-            SectionTitle(AppStrings.aboutSection),
+            SectionTitle(context.l10n.tr('aboutSection')),
             _buildAbout(),
           ],
         ),
@@ -269,7 +281,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _buildEngineSection(AppSettings settings, SettingsController controller) {
+  Widget _buildEngineSection(
+    AppSettings settings,
+    SettingsController controller,
+  ) {
     final preset = LlmPreset.byId(settings.llm.presetId);
     return SoftCard(
       padding: const EdgeInsets.all(14),
@@ -282,10 +297,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               groupValue: settings.engine,
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text(engine.label,
-                  style: const TextStyle(fontSize: 14.5)),
-              subtitle: Text(_engineDesc(engine),
-                  style: const TextStyle(fontSize: 11.5)),
+              title: Text(
+                context.l10n.engine(engine.id),
+                style: const TextStyle(fontSize: 14.5),
+              ),
+              subtitle: Text(
+                _engineDesc(engine),
+                style: const TextStyle(fontSize: 11.5),
+              ),
               onChanged: (v) {
                 if (v != null) controller.setEngine(v);
               },
@@ -297,8 +316,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             TextField(
               controller: TextEditingController(text: settings.visionModel),
               key: ValueKey('vlm_${settings.visionModel}'),
-              decoration: const InputDecoration(
-                labelText: '识别模型名',
+              decoration: InputDecoration(
+                labelText: context.l10n.tr('visionModelLabel'),
                 hintText: 'qwen-vl-plus',
               ),
               onChanged: (v) => controller.setVisionModel(v),
@@ -308,10 +327,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Wrap(
                 spacing: 6,
                 children: preset.visionModels
-                    .map((m) => ActionChip(
-                          label: Text(m, style: const TextStyle(fontSize: 11.5)),
-                          onPressed: () => controller.setVisionModel(m),
-                        ))
+                    .map(
+                      (m) => ActionChip(
+                        label: Text(m, style: const TextStyle(fontSize: 11.5)),
+                        onPressed: () => controller.setVisionModel(m),
+                      ),
+                    )
                     .toList(),
               ),
               const SizedBox(height: 10),
@@ -329,7 +350,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: <Widget>[
                 Expanded(
                   child: PrimaryButton(
-                    label: AppStrings.testConnection,
+                    label: context.l10n.tr('testConnection'),
                     outlined: true,
                     loading: _testingVision,
                     onPressed: _testingVision ? null : _testVision,
@@ -343,7 +364,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _visionResult!,
                 style: TextStyle(
                   fontSize: 12,
-                  color: _visionResult!.startsWith(AppStrings.connectionOk)
+                  color:
+                      _visionResult!.startsWith(context.l10n.tr('connectionOk'))
                       ? AppTheme.brandGreen
                       : AppTheme.accentClay,
                 ),
@@ -357,8 +379,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             TextField(
               controller: TextEditingController(text: settings.customEndpoint),
               key: ValueKey('ep_${settings.customEndpoint}'),
-              decoration: const InputDecoration(
-                labelText: '服务地址',
+              decoration: InputDecoration(
+                labelText: context.l10n.tr('serverUrl'),
                 hintText: 'http://192.168.1.100:8000/identify',
               ),
               onChanged: (v) => controller.patch(customEndpoint: v),
@@ -368,26 +390,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               controller: TextEditingController(text: settings.customApiKey),
               key: ValueKey('ck_${settings.customApiKey}'),
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'API Key（可留空）',
+              decoration: InputDecoration(
+                labelText: context.l10n.tr('apiKeyOptional'),
               ),
               onChanged: (v) => controller.patch(customApiKey: v),
             ),
             const SizedBox(height: 10),
-            const Text(
-              '自建服务协议：POST JSON {"image": "<base64>", "topk": 6}，'
-              '返回 {"results":[{"scientificName","commonName","family","genus","confidence"}]}',
-              style: TextStyle(fontSize: 11.5, height: 1.6),
+            Text(
+              context.l10n.tr('customProto'),
+              style: const TextStyle(fontSize: 11.5, height: 1.6),
             ),
           ] else ...<Widget>[
             TextField(
-              controller:
-                  TextEditingController(text: settings.currentEngineKey),
-              key: ValueKey('k_${settings.engine.id}_${settings.currentEngineKey}'),
+              controller: TextEditingController(
+                text: settings.currentEngineKey,
+              ),
+              key: ValueKey(
+                'k_${settings.engine.id}_${settings.currentEngineKey}',
+              ),
               obscureText: true,
               decoration: InputDecoration(
-                labelText: '${settings.engine.label} API Key',
-                hintText: AppStrings.apiKeyHint,
+                labelText: '${context.l10n.engine(settings.engine.id)} API Key',
+                hintText: context.l10n.tr('apiKeyHint'),
               ),
               onChanged: (v) {
                 switch (settings.engine) {
@@ -439,10 +463,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           value: settings.hybridFallback,
           contentPadding: EdgeInsets.zero,
           dense: true,
-          title:
-              const Text(AppStrings.hybridTitle, style: TextStyle(fontSize: 14)),
-          subtitle: const Text(AppStrings.hybridDesc,
-              style: TextStyle(fontSize: 11.5)),
+          title: Text(
+            context.l10n.tr('hybridTitle'),
+            style: const TextStyle(fontSize: 14),
+          ),
+          subtitle: Text(
+            context.l10n.tr('hybridDesc'),
+            style: const TextStyle(fontSize: 11.5),
+          ),
           onChanged: (v) => controller.setHybrid(enabled: v),
         ),
         if (settings.hybridFallback) ...<Widget>[
@@ -450,7 +478,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Row(
             children: <Widget>[
               Text(
-                '${AppStrings.hybridThresholdLabel} ${(settings.hybridThreshold * 100).round()}%',
+                '${context.l10n.tr('hybridThresholdLabel')} ${(settings.hybridThreshold * 100).round()}%',
                 style: const TextStyle(fontSize: 12.5),
               ),
             ],
@@ -469,21 +497,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           Text(
-            '视觉模型的把握低于这个数时，自动换用复核引擎再判一次。'
-            '调低更省事，调高更准。',
-            style: TextStyle(fontSize: 11.5, height: 1.6, color: scheme.onSurfaceVariant),
+            context.l10n.tr('hybridThresholdHint'),
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.6,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<HybridFallbackSource>(
             initialValue: source,
-            decoration: const InputDecoration(labelText: AppStrings.hybridSourceLabel),
+            decoration: InputDecoration(
+              labelText: context.l10n.tr('hybridSourceLabel'),
+            ),
             items: HybridFallbackSource.uiValues
                 .map(
                   (s) => DropdownMenuItem<HybridFallbackSource>(
                     value: s,
-                    child: Text(s.label,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13.5)),
+                    child: Text(
+                      context.l10n.hybrid(s.id),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13.5),
+                    ),
                   ),
                 )
                 .toList(),
@@ -494,48 +529,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 10),
           Text(
             settings.effectiveFallbackEngine == null
-                ? AppStrings.hybridNoFallback
-                : '当前会用 ${settings.effectiveFallbackEngine!.label} 复核。'
-                    '没配 Key 的引擎会自动跳过，全都没配这项就不生效。',
-            style: TextStyle(fontSize: 11.5, height: 1.6, color: scheme.onSurfaceVariant),
+                ? context.l10n.tr('hybridNoFallback')
+                : context.l10n.tr('hybridCurrent', <String>[
+                    context.l10n.engine(settings.effectiveFallbackEngine!.id),
+                  ]),
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.6,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         ],
       ],
     );
   }
 
-  String _engineDesc(EngineType engine) {
-    switch (engine) {
-      case EngineType.plantId:
-        return '覆盖最广、字段最全的商业识别服务';
-      case EngineType.plantNet:
-        return '科研机构维护，免费额度友好';
-      case EngineType.kindwise:
-        return '企业级接口，独立额度与账单';
-      case EngineType.customHttp:
-        return '接你自己的模型服务，图片不出内网';
-      case EngineType.vlm:
-        return '直接用能读图的大模型识别，不用另配植物服务';
-    }
-  }
+  String _engineDesc(EngineType engine) => context.l10n.engineDesc(engine.id);
 
-  String _engineHelp(EngineType engine) {
-    switch (engine) {
-      case EngineType.plantId:
-        return '在 plant.id 官网注册后即可拿到 API Key，新账号通常带免费试用额度。'
-            'Key 只保存在本机，不会上传。';
-      case EngineType.plantNet:
-        return '到 my-api.plantnet.org 注册账户即可获取免费 API Key，'
-            '注意接口按项目（weurope 等）区分，本 App 默认走观赏植物项目。';
-      case EngineType.kindwise:
-        return 'Kindwise 提供植物识别与健康诊断 API，注册后在控制台创建 key。';
-      case EngineType.customHttp:
-        return '把地址指向你自己的推理服务即可，支持局域网 http。';
-      case EngineType.vlm:
-        return '复用下方「大模型」里的 Base URL 与 Key，只需把识别模型名换成支持读图'
-            '的型号；文案模型仍可保持原样。';
-    }
-  }
+  String _engineHelp(EngineType engine) => context.l10n.engineHelp(engine.id);
 
   Widget _buildLlmSection(AppSettings settings, SettingsController controller) {
     final llm = settings.llm;
@@ -550,33 +561,45 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             value: llm.enabled,
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text('启用大模型生成介绍',
-                style: TextStyle(fontSize: 14.5)),
-            subtitle: const Text('关闭后只使用内置词典',
-                style: TextStyle(fontSize: 11.5)),
+            title: Text(
+              context.l10n.tr('enableLlm'),
+              style: const TextStyle(fontSize: 14.5),
+            ),
+            subtitle: Text(
+              context.l10n.tr('llmOffHint'),
+              style: const TextStyle(fontSize: 11.5),
+            ),
             onChanged: (v) => controller.setLlm(llm.copyWith(enabled: v)),
           ),
           const Divider(),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: llm.presetId,
-            decoration: const InputDecoration(labelText: '服务商 / 端点'),
+            decoration: InputDecoration(
+              labelText: context.l10n.tr('providerLabel'),
+            ),
             items: LlmPreset.presets
-                .map((p) => DropdownMenuItem<String>(
-                      value: p.id,
-                      child: Text(p.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 14)),
-                    ))
+                .map(
+                  (p) => DropdownMenuItem<String>(
+                    value: p.id,
+                    child: Text(
+                      p.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (v) {
               if (v == null) return;
               final p = LlmPreset.byId(v);
-              controller.setLlm(llm.copyWith(
-                presetId: v,
-                baseUrl: p.baseUrl,
-                model: p.defaultModel,
-              ));
+              controller.setLlm(
+                llm.copyWith(
+                  presetId: v,
+                  baseUrl: p.baseUrl,
+                  model: p.defaultModel,
+                ),
+              );
             },
           ),
           if (preset.hint != null) ...<Widget>[
@@ -619,19 +642,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             Wrap(
               spacing: 6,
               children: preset.models
-                  .map((m) => ActionChip(
-                        label: Text(m, style: const TextStyle(fontSize: 11.5)),
-                        onPressed: () =>
-                            controller.setLlm(llm.copyWith(model: m)),
-                      ))
+                  .map(
+                    (m) => ActionChip(
+                      label: Text(m, style: const TextStyle(fontSize: 11.5)),
+                      onPressed: () =>
+                          controller.setLlm(llm.copyWith(model: m)),
+                    ),
+                  )
                   .toList(),
             ),
           ],
           if (settings.engine == EngineType.vlm) ...<Widget>[
             const SizedBox(height: 8),
             Text(
-              '当前识别引擎是「视觉大模型」，上面这个模型名只用于写介绍文案；'
-              '识别用的模型名请在上方「识别引擎」里填。',
+              context.l10n.tr('vlmModelNote'),
               style: TextStyle(
                 fontSize: 11.5,
                 height: 1.6,
@@ -654,7 +678,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             children: <Widget>[
               Expanded(
                 child: PrimaryButton(
-                  label: AppStrings.testConnection,
+                  label: context.l10n.tr('testConnection'),
                   outlined: true,
                   loading: _testing,
                   onPressed: _testing ? null : _testLlm,
@@ -668,7 +692,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _testResult!,
               style: TextStyle(
                 fontSize: 12,
-                color: _testResult!.startsWith(AppStrings.connectionOk)
+                color: _testResult!.startsWith(context.l10n.tr('connectionOk'))
                     ? AppTheme.brandGreen
                     : AppTheme.accentClay,
               ),
@@ -690,8 +714,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               groupValue: settings.themeMode,
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text(_themeLabel(mode),
-                  style: const TextStyle(fontSize: 14.5)),
+              title: Text(
+                _themeLabel(mode),
+                style: const TextStyle(fontSize: 14.5),
+              ),
               onChanged: (v) {
                 if (v != null) controller.setThemeMode(v);
               },
@@ -715,7 +741,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('打不开浏览器，请手动访问 platform.agnes-ai.com')),
+          SnackBar(content: Text(context.l10n.tr('openBrowserFailed'))),
         );
       }
     }
@@ -726,24 +752,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (key.isEmpty) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('剪贴板里没有内容，请先在 Agnes 控制台复制 Key')),
+          SnackBar(content: Text(context.l10n.tr('clipboardEmpty'))),
         );
         return;
       }
       await controller.setLlm(settings.llm.copyWith(apiKey: key));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Key 已填入，点上方「测试连接」确认可用')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(context.l10n.tr('keyPasted'))));
     }
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .primary
-            .withValues(alpha: 0.07),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(
           color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
@@ -757,24 +779,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               const Icon(Icons.volunteer_activism_rounded, size: 16),
               const SizedBox(width: 6),
               Text(
-                '3 分钟拿到免费 Key',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                context.l10n.tr('agnesGuideTitle'),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Agnes 没有开放「程序化注册」接口：账号要在网页上注册，'
-            'Key 也要在控制台点出来。这里替你省掉复制网址和粘贴 Key 两步，'
-            '剩下的两步仍然需要你亲自点一下。',
-            style: TextStyle(fontSize: 11.5, height: 1.65),
+          Text(
+            context.l10n.tr('agnesGuideBody'),
+            style: const TextStyle(fontSize: 11.5, height: 1.65),
           ),
           const SizedBox(height: 10),
           Row(
             children: <Widget>[
               Expanded(
                 child: PrimaryButton(
-                  label: '打开注册页',
+                  label: context.l10n.tr('openRegister'),
                   icon: Icons.open_in_browser_rounded,
                   outlined: true,
                   expand: false,
@@ -784,7 +807,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: PrimaryButton(
-                  label: '粘贴 Key',
+                  label: context.l10n.tr('pasteKey'),
                   icon: Icons.content_paste_rounded,
                   expand: false,
                   onPressed: pasteKey,
@@ -797,7 +820,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             TextButton.icon(
               onPressed: () => controller.setEngine(EngineType.vlm),
               icon: const Icon(Icons.auto_awesome_rounded, size: 17),
-              label: const Text('顺手把识别引擎也切到「视觉大模型」'),
+              label: Text(context.l10n.tr('switchToVlm')),
             ),
         ],
       ),
@@ -812,14 +835,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text(AppStrings.backupDesc,
-              style: TextStyle(fontSize: 12.5, height: 1.7)),
+          Text(
+            context.l10n.tr('backupDesc'),
+            style: const TextStyle(fontSize: 12.5, height: 1.7),
+          ),
           const SizedBox(height: 12),
           Row(
             children: <Widget>[
               Expanded(
                 child: PrimaryButton(
-                  label: AppStrings.exportConfig,
+                  label: context.l10n.tr('exportConfig'),
                   icon: Icons.ios_share_rounded,
                   outlined: true,
                   expand: false,
@@ -830,7 +855,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: PrimaryButton(
-                  label: AppStrings.importConfig,
+                  label: context.l10n.tr('importConfig'),
                   icon: Icons.file_upload_outlined,
                   expand: false,
                   loading: _backupBusy,
@@ -845,8 +870,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               _backupHint!,
               style: TextStyle(
                 fontSize: 12,
-                color: _backupHint!.startsWith(AppStrings.configExported) ||
-                        _backupHint!.startsWith(AppStrings.configImported)
+                color:
+                    _backupHint!.startsWith(
+                          context.l10n.tr('configExported'),
+                        ) ||
+                        _backupHint!.startsWith(
+                          context.l10n.tr('configImported'),
+                        )
                     ? AppTheme.brandGreen
                     : AppTheme.accentClay,
               ),
@@ -859,13 +889,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: TextButton.icon(
               onPressed: _resetConfig,
               icon: const Icon(Icons.restore_rounded, size: 18),
-              label: const Text(AppStrings.resetConfig),
+              label: Text(context.l10n.tr('resetConfig')),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            '备份文件里是明文 API Key，导出后请自行决定发到哪里，'
-            '不要丢进公开群或公开仓库。',
+            context.l10n.tr('backupWarn'),
             style: TextStyle(
               fontSize: 11.5,
               height: 1.6,
@@ -880,38 +909,78 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _themeLabel(ThemeMode mode) {
     switch (mode) {
       case ThemeMode.light:
-        return AppStrings.themeLight;
+        return context.l10n.tr('themeLight');
       case ThemeMode.dark:
-        return AppStrings.themeDark;
+        return context.l10n.tr('themeDark');
       default:
-        return AppStrings.themeSystem;
+        return context.l10n.tr('themeSystem');
     }
   }
 
-  Widget _buildCardSection(AppSettings settings, SettingsController controller) {
+  /// 界面语言：跟随系统 / 简体中文 / English。
+  ///
+  /// 跟随系统时按设备语言解析，非中文一律回退英文（见 [AppLanguage]）。
+  Widget _buildLanguageSection(
+    AppSettings settings,
+    SettingsController controller,
+  ) {
+    final l10n = context.l10n;
+    return SoftCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: <Widget>[
+          for (final lang in AppLanguage.values)
+            RadioListTile<AppLanguage>(
+              value: lang,
+              groupValue: AppLanguage.fromId(settings.language),
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                l10n.languageName(lang.id),
+                style: const TextStyle(fontSize: 14.5),
+              ),
+              onChanged: (v) {
+                if (v != null) controller.patch(language: v.id);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardSection(
+    AppSettings settings,
+    SettingsController controller,
+  ) {
     return SoftCard(
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text('默认模板',
-              style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+          Text(
+            context.l10n.tr('defaultTemplate'),
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             children: CardTemplate.values
-                .map((t) => ChoiceChip(
-                      label: Text(t.label),
-                      selected: settings.cardTemplate == t,
-                      onSelected: (_) => controller.setCardTemplate(t),
-                    ))
+                .map(
+                  (t) => ChoiceChip(
+                    label: Text(context.l10n.cardTpl(t.id)),
+                    selected: settings.cardTemplate == t,
+                    onSelected: (_) => controller.setCardTemplate(t),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: 14),
           TextField(
             controller: TextEditingController(text: settings.watermark),
             key: ValueKey('wm_${settings.watermark}'),
-            decoration: const InputDecoration(labelText: '卡片水印署名'),
+            decoration: InputDecoration(
+              labelText: context.l10n.tr('watermarkLabel'),
+            ),
             onChanged: (v) => controller.patch(watermark: v),
           ),
           const SizedBox(height: 12),
@@ -919,10 +988,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             value: settings.watermarkLocation,
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text(AppStrings.watermarkLocation,
-                style: TextStyle(fontSize: 14)),
-            subtitle: const Text(AppStrings.watermarkLocationDesc,
-                style: TextStyle(fontSize: 11.5)),
+            title: Text(
+              context.l10n.tr('watermarkLocation'),
+              style: const TextStyle(fontSize: 14),
+            ),
+            subtitle: Text(
+              context.l10n.tr('watermarkLocationDesc'),
+              style: const TextStyle(fontSize: 11.5),
+            ),
             onChanged: (v) => controller.patch(watermarkLocation: v),
           ),
           const SizedBox(height: 4),
@@ -930,8 +1003,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             value: settings.hdExport,
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text('高清导出（3x，约 1080px 宽）',
-                style: TextStyle(fontSize: 14)),
+            title: Text(
+              context.l10n.tr('hdExportLabel'),
+              style: const TextStyle(fontSize: 14),
+            ),
             onChanged: (v) => controller.patch(hdExport: v),
           ),
         ],
@@ -948,33 +1023,35 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text('版本'),
-            trailing: Text(_version.isEmpty ? '—' : _version,
-                style: TextStyle(color: scheme.onSurfaceVariant)),
+            title: Text(context.l10n.tr('versionPrefix')),
+            trailing: Text(
+              _version.isEmpty ? '—' : _version,
+              style: TextStyle(color: scheme.onSurfaceVariant),
+            ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text(AppStrings.privacyPolicy),
+            title: Text(context.l10n.tr('privacyPolicy')),
             trailing: const Icon(Icons.chevron_right_rounded, size: 18),
             onTap: () => Navigator.of(context).pushNamed(
               AppRoutes.document,
               arguments: DocumentPageArgs(
-                title: AppStrings.privacyPolicy,
-                content: _privacyText,
+                title: context.l10n.tr('privacyPolicy'),
+                content: context.l10n.tr('privacyBody'),
               ),
             ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            title: const Text(AppStrings.termsOfService),
+            title: Text(context.l10n.tr('termsOfService')),
             trailing: const Icon(Icons.chevron_right_rounded, size: 18),
             onTap: () => Navigator.of(context).pushNamed(
               AppRoutes.document,
               arguments: DocumentPageArgs(
-                title: AppStrings.termsOfService,
-                content: _termsText,
+                title: context.l10n.tr('termsOfService'),
+                content: context.l10n.tr('termsBody'),
               ),
             ),
           ),
@@ -983,50 +1060,3 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 }
-
-const String _privacyText = '''
-## 我们收集什么
-- 你拍摄或从相册选择的照片：仅用于植物识别，默认在识别完成后保留在本地历史记录中。
-- 你填写的 API Key：只保存在本机 SharedPreferences 中，不会上传到任何服务器。
-
-## 照片去了哪里
-- 识别时，照片会经过压缩后发送给你自己选择的服务商（Plant.id / Pl@ntNet / Kindwise / 自建服务）。
-- 如果你使用自建服务且地址是局域网内网地址，照片不会离开你的局域网。
-- 如果你开启了大模型介绍，发送给大模型的只有植物学名等文本信息，不含照片。
-- 只有当识别引擎选了「视觉大模型」时，压缩后的照片才会随识别请求发给你配置的那个视觉模型，且同样只发给你自己选择的服务商。
-- 如果开了「置信度回落复核」，且视觉模型的把握低于你设的阈值，同一张照片还会再发一次给你指定的那家复核引擎（默认 Plant.id）。未被采信的那一方不会收到请求。
-
-## 你的权利
-- 可以随时在「我的记录」中删除任意一条历史，或一键清空。
-- 可以在「配置备份与恢复」里导出全部设置做备份，换设备时导入即可，无需重新填写。
-  导出的文件包含明文 API Key，请自行保管，避免转发到公开渠道。
-- 卸载应用会连同本地图片与配置一起删除。
-
-## Agnes 注册说明
-本应用不代理任何账号注册。Agnes 未开放程序化注册接口，账号与 API Key 必须由你在其官网
-（platform.agnes-ai.com）自行完成。应用内只提供「打开注册页」与「粘贴 Key」两步辅助，
-不会替你创建账号，也不会把 Key 上传到任何第三方服务器。
-
-## 第三方服务
-本应用本身不提供识别与生成能力，需要你自行配置第三方服务并遵守其条款。请勿在你不信任的服务中上传敏感照片。
-
-## 联系我们
-如果你对隐私政策有疑问，请在应用商店页面留言。
-''';
-
-const String _termsText = '''
-## 服务说明
-花识 FloraLens 是一个工具型应用，识别与文案生成能力来自用户自行配置的第三方服务。你不配置任何服务时，应用仍可使用内置离线词典，但功能会受限。
-
-## 免责声明
-- 识别结果由算法给出，可能存在误差，仅供参考，不应作为食用、药用或专业园艺操作的依据。
-- 涉及有毒植物、入侵物种、受保护物种的判断，请以权威机构发布的信息为准。
-- 大模型生成的内容可能存在事实性错误，请自行甄别。
-
-## 账号与费用
-- 使用第三方服务产生的费用由其服务商收取，与本应用无关。
-- 请妥善保管自己的 API Key，因泄露造成的损失由你自行承担。
-
-## 知识产权
-应用生成的分享卡片内容归你所有，你可以自由分享到任何平台。
-''';

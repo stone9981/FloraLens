@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../data/models/history_item.dart';
 import '../../data/models/picked_photo.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 自研拍摄页。
 ///
@@ -67,8 +67,8 @@ class _CapturePageState extends ConsumerState<CapturePage>
         _initializing = false;
         _permanentlyDenied = status.isPermanentlyDenied;
         _error = status.isPermanentlyDenied
-            ? AppStrings.permissionPermanentlyDenied
-            : AppStrings.permissionDenied;
+            ? context.l10n.tr('permissionPermanentlyDenied')
+            : context.l10n.tr('permissionDenied');
       });
       return;
     }
@@ -78,7 +78,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
         if (!mounted) return;
         setState(() {
           _initializing = false;
-          _error = '这台设备没有可用的摄像头';
+          _error = context.l10n.tr('noCamera');
         });
         return;
       }
@@ -87,7 +87,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
       if (!mounted) return;
       setState(() {
         _initializing = false;
-        _error = '相机启动失败：$e';
+        _error = context.l10n.tr('cameraStartFailed', <String>[e.toString()]);
       });
     }
   }
@@ -119,19 +119,19 @@ class _CapturePageState extends ConsumerState<CapturePage>
 
   Future<void> _shoot() async {
     final controller = _controller;
-    if (controller == null || !controller.value.isInitialized || _taking) return;
+    if (controller == null || !controller.value.isInitialized || _taking)
+      return;
     setState(() => _taking = true);
     try {
       final file = await controller.takePicture();
       if (!mounted) return;
-      Navigator.of(context).pop(
-        PickedPhoto(path: file.path, source: IdentifySource.camera),
-      );
+      Navigator.of(context)
+          .pop(PickedPhoto(path: file.path, source: IdentifySource.camera));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('拍照失败，请重试')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.tr('captureFailed'))));
     } finally {
       if (mounted) setState(() => _taking = false);
     }
@@ -146,9 +146,8 @@ class _CapturePageState extends ConsumerState<CapturePage>
       );
       if (picked == null || !mounted) return;
       // 同样是相册照片，只是从自研拍摄页里选的，来源得如实记成「相册」。
-      Navigator.of(context).pop(
-        PickedPhoto(path: picked.path, source: IdentifySource.gallery),
-      );
+      Navigator.of(context)
+          .pop(PickedPhoto(path: picked.path, source: IdentifySource.gallery));
     } catch (_) {}
   }
 
@@ -156,8 +155,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     try {
-      await controller
-          .setFlashMode(_flashOn ? FlashMode.off : FlashMode.torch);
+      await controller.setFlashMode(_flashOn ? FlashMode.off : FlashMode.torch);
       if (!mounted) return;
       setState(() => _flashOn = !_flashOn);
     } catch (_) {}
@@ -195,8 +193,11 @@ class _CapturePageState extends ConsumerState<CapturePage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Icon(Icons.no_photography_outlined,
-                  size: 52, color: Colors.white70),
+              const Icon(
+                Icons.no_photography_outlined,
+                size: 52,
+                color: Colors.white70,
+              ),
               const SizedBox(height: 16),
               Text(
                 _error!,
@@ -211,7 +212,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
                     // 从系统设置返回后会由 AppLifecycleState.resumed 触发 _init 重新检查权限。
                   },
                   icon: const Icon(Icons.settings_outlined),
-                  label: const Text('去系统设置'),
+                  label: Text(context.l10n.tr('openSystemSettings')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white54),
@@ -221,7 +222,7 @@ class _CapturePageState extends ConsumerState<CapturePage>
                 OutlinedButton.icon(
                   onPressed: _init,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('重试'),
+                  label: Text(context.l10n.tr('retry')),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white54),
@@ -232,7 +233,9 @@ class _CapturePageState extends ConsumerState<CapturePage>
         ),
       );
     }
-    if (_initializing || controller == null || !controller.value.isInitialized) {
+    if (_initializing ||
+        controller == null ||
+        !controller.value.isInitialized) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white70, strokeWidth: 2),
       );
@@ -263,13 +266,17 @@ class _CapturePageState extends ConsumerState<CapturePage>
               if (_cameras.length > 1)
                 IconButton(
                   onPressed: _switchCamera,
-                  icon: const Icon(Icons.flip_camera_ios_outlined,
-                      color: Colors.white),
+                  icon: const Icon(
+                    Icons.flip_camera_ios_outlined,
+                    color: Colors.white,
+                  ),
                 ),
               IconButton(
                 onPressed: _toggleFlash,
                 icon: Icon(
-                  _flashOn ? Icons.flashlight_on : Icons.flashlight_off_outlined,
+                  _flashOn
+                      ? Icons.flashlight_on
+                      : Icons.flashlight_off_outlined,
                   color: Colors.white,
                 ),
               ),
@@ -321,9 +328,9 @@ class _CapturePageState extends ConsumerState<CapturePage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Text(
-                '把花朵放进框内，尽量充满画面',
-                style: TextStyle(color: Colors.white70, fontSize: 12.5),
+              Text(
+                context.l10n.tr('frameHint'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12.5),
               ),
               const SizedBox(height: 20),
               Row(
@@ -331,8 +338,11 @@ class _CapturePageState extends ConsumerState<CapturePage>
                 children: <Widget>[
                   IconButton(
                     onPressed: _pickFromGallery,
-                    icon: const Icon(Icons.photo_library_outlined,
-                        color: Colors.white, size: 26),
+                    icon: const Icon(
+                      Icons.photo_library_outlined,
+                      color: Colors.white,
+                      size: 26,
+                    ),
                   ),
                   GestureDetector(
                     onTap: _shoot,
@@ -355,10 +365,15 @@ class _CapturePageState extends ConsumerState<CapturePage>
                         child: _taking
                             ? const Padding(
                                 padding: EdgeInsets.all(22),
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
-                            : const Icon(Icons.camera_alt_rounded,
-                                color: AppTheme.brandGreen, size: 30),
+                            : const Icon(
+                                Icons.camera_alt_rounded,
+                                color: AppTheme.brandGreen,
+                                size: 30,
+                              ),
                       ),
                     ),
                   ),

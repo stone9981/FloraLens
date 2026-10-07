@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'core/constants.dart';
 import 'core/routes.dart';
 import 'core/theme.dart';
 import 'data/local/settings_store.dart';
+import 'data/models/app_settings.dart';
+import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,9 +24,7 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-      ],
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
       child: const FloraLensApp(),
     ),
   );
@@ -54,13 +54,25 @@ class _FloraLensAppState extends ConsumerState<FloraLensApp> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
+    final locale = AppLanguage.fromId(settings.language).locale;
 
     return MaterialApp(
-      title: AppStrings.appName,
+      title: 'FloraLens',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: settings.themeMode,
+      locale: locale,
+      // 跟随系统且设备非中文时，一律回退英文。
+      localeResolutionCallback: (deviceLocale, _) =>
+          AppLocalizations.resolve(deviceLocale),
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.generate,
       builder: (context, child) {

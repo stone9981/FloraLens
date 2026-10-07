@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/app_settings.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 配置备份文件的读写。
 ///
@@ -42,41 +43,46 @@ class ConfigBackup {
     return const JsonEncoder.withIndent('  ').convert(doc);
   }
 
-  static ConfigBackupDecode decode(String text) {
+  static ConfigBackupDecode decode(
+    String text, {
+    required AppLocalizations l10n,
+  }) {
     if (text.trim().isEmpty) {
-      return const ConfigBackupDecode.error('文件内容是空的');
+      return ConfigBackupDecode.error(l10n.tr('configEmpty'));
     }
 
     Object? root;
     try {
       root = jsonDecode(text);
     } catch (_) {
-      return const ConfigBackupDecode.error('不是合法的 JSON 文件');
+      return ConfigBackupDecode.error(l10n.tr('configNotJson'));
     }
     if (root is! Map<String, dynamic>) {
-      return const ConfigBackupDecode.error('文件格式不对，这不是花识导出的配置');
+      return ConfigBackupDecode.error(l10n.tr('configBadFormat'));
     }
     if (root['format'] != formatId) {
-      return const ConfigBackupDecode.error('这不是花识的配置备份文件');
+      return ConfigBackupDecode.error(l10n.tr('configWrongApp'));
     }
 
     final rawVersion = root['version'];
     if (rawVersion is! int || rawVersion > version) {
       return ConfigBackupDecode.error(
-        '这个备份来自更新版本的花识（v${rawVersion ?? '?'}），当前版本可能不认识',
+        l10n.tr('configNewerVersion', <String>['${rawVersion ?? '?'}']),
       );
     }
 
     final raw = root['settings'];
     if (raw is! Map<String, dynamic>) {
-      return const ConfigBackupDecode.error('备份里缺少配置内容');
+      return ConfigBackupDecode.error(l10n.tr('configMissingBody'));
     }
 
     AppSettings settings;
     try {
       settings = AppSettings.fromJson(raw);
     } catch (e) {
-      return ConfigBackupDecode.error('配置解析失败：$e');
+      return ConfigBackupDecode.error(
+        l10n.tr('configParseFailed', <String>['$e']),
+      );
     }
 
     return ConfigBackupDecode.ok(settings);

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 import '../../core/result.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/plant.dart';
 import 'identification_engine.dart';
 
@@ -18,6 +19,7 @@ class HybridEngine extends IdentificationEngine {
   const HybridEngine({
     required this.primary,
     required this.fallback,
+    required this.l10n,
     this.threshold = 0.65,
   });
 
@@ -29,6 +31,9 @@ class HybridEngine extends IdentificationEngine {
 
   /// 触发回落所需的置信度门槛，0~1。
   final double threshold;
+
+  /// 当前界面语言，用于把复核说明本地化。
+  final AppLocalizations l10n;
 
   @override
   EngineType get type => primary.type;
@@ -53,8 +58,8 @@ class HybridEngine extends IdentificationEngine {
     }
 
     debugPrint(
-      '[HybridEngine] ${primary.type.label} 置信度 ${top.confidencePercent}% '
-      '< ${(threshold * 100).round()}%，转交 ${fallback.type.label} 复核',
+      '[HybridEngine] ${l10n.engine(primary.type.id)} 置信度 ${top.confidencePercent}% '
+      '< ${(threshold * 100).round()}%，转交 ${l10n.engine(fallback.type.id)} 复核',
     );
 
     final fr = await fallback
@@ -71,9 +76,12 @@ class HybridEngine extends IdentificationEngine {
       debugPrint('[HybridEngine] 复核失败：$reason');
       return Result.ok(
         result.copyWith(
-          fallbackNote:
-              '${primary.type.label}置信度只有 ${top.confidencePercent}%，'
-              '${fallback.type.label}复核未成功（$reason），结果仅供参考',
+          fallbackNote: l10n.tr('hybridNoteFailed', <String>[
+            l10n.engine(primary.type.id),
+            '${top.confidencePercent}',
+            l10n.engine(fallback.type.id),
+            reason,
+          ]),
           vlmConfidence: top.confidence,
         ),
       );
@@ -83,9 +91,11 @@ class HybridEngine extends IdentificationEngine {
     if (fallbackResult.candidates.isEmpty) {
       return Result.ok(
         result.copyWith(
-          fallbackNote:
-              '${primary.type.label}置信度只有 ${top.confidencePercent}%，'
-              '${fallback.type.label}没能给出有效结果，仍以原判定为准',
+          fallbackNote: l10n.tr('hybridNoteNoResult', <String>[
+            l10n.engine(primary.type.id),
+            '${top.confidencePercent}',
+            l10n.engine(fallback.type.id),
+          ]),
           vlmConfidence: top.confidence,
         ),
       );
@@ -113,12 +123,19 @@ class HybridEngine extends IdentificationEngine {
     }
 
     final note = adopted
-        ? '${primary.type.label}只给出 ${top.confidencePercent}%，'
-            '已改用${fallback.type.label}的判定：${fallbackTop.displayName}'
-            '（${fallbackTop.confidencePercent}%）'
-        : '${primary.type.label}给出 ${top.confidencePercent}%，'
-            '${fallback.type.label}复核后把握反而更低'
-            '（${fallbackTop.confidencePercent}%），仍以${primary.type.label}结果为准';
+        ? l10n.tr('hybridNoteAdopted', <String>[
+            l10n.engine(primary.type.id),
+            '${top.confidencePercent}',
+            l10n.engine(fallback.type.id),
+            fallbackTop.displayName,
+            '${fallbackTop.confidencePercent}',
+          ])
+        : l10n.tr('hybridNoteKept', <String>[
+            l10n.engine(primary.type.id),
+            '${top.confidencePercent}',
+            l10n.engine(fallback.type.id),
+            '${fallbackTop.confidencePercent}',
+          ]);
 
     return Result.ok(
       result.copyWith(

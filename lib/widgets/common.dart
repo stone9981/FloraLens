@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 
 /// 主行动按钮：支持加载态与禁用态。
 class PrimaryButton extends StatelessWidget {
@@ -44,14 +45,8 @@ class PrimaryButton extends StatelessWidget {
           );
 
     final Widget button = outlined
-        ? OutlinedButton(
-            onPressed: loading ? null : onPressed,
-            child: child,
-          )
-        : FilledButton(
-            onPressed: loading ? null : onPressed,
-            child: child,
-          );
+        ? OutlinedButton(onPressed: loading ? null : onPressed, child: child)
+        : FilledButton(onPressed: loading ? null : onPressed, child: child);
 
     return expand ? SizedBox(width: double.infinity, child: button) : button;
   }
@@ -86,9 +81,7 @@ class SoftCard extends StatelessWidget {
           padding: padding,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(
-              color: scheme.outline.withValues(alpha: 0.8),
-            ),
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.8)),
           ),
           child: child,
         ),
@@ -167,8 +160,7 @@ class SectionTitle extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          if (trailing != null)
-            GestureDetector(onTap: onTap, child: trailing),
+          if (trailing != null) GestureDetector(onTap: onTap, child: trailing),
         ],
       ),
     );
@@ -197,8 +189,11 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(icon, size: 56, color: scheme.onSurfaceVariant
-                .withValues(alpha: 0.5)),
+            Icon(
+              icon,
+              size: 56,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 14),
             Text(
               message,
@@ -249,8 +244,10 @@ class ErrorBanner extends StatelessWidget {
           if (onRetry != null)
             TextButton(
               onPressed: onRetry,
-              child: Text('重试',
-                  style: TextStyle(color: scheme.onErrorContainer)),
+              child: Text(
+                context.l10n.tr('retry'),
+                style: TextStyle(color: scheme.onErrorContainer),
+              ),
             ),
         ],
       ),
@@ -306,8 +303,10 @@ class LocalImage extends StatelessWidget {
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(radius),
       ),
-      child: Icon(Icons.image_not_supported_outlined,
-          color: scheme.onSurfaceVariant.withValues(alpha: 0.6)),
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+      ),
     );
   }
 }

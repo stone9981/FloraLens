@@ -82,11 +82,12 @@ class IdentificationController extends StateNotifier<IdentifyState> {
     IdentifySource source = IdentifySource.camera,
   }) async {
     final settings = _ref.read(settingsProvider);
+    final l = _ref.read(appLocalizationsProvider);
     if (!settings.engineReady) {
       state = state.copyWith(
         phase: IdentifyPhase.failure,
         imagePath: imagePath,
-        errorMessage: '还没有配置识别引擎，请先到「设置」里填写 ${settings.engine.label} 所需的信息',
+        errorMessage: l.tr('engineNotConfigured'),
       );
       return;
     }
@@ -111,9 +112,7 @@ class IdentificationController extends StateNotifier<IdentifyState> {
     if (err != null) {
       state = state.copyWith(
         phase: IdentifyPhase.failure,
-        errorMessage: err is AppException
-            ? err.message
-            : '识别失败，请稍后重试',
+        errorMessage: err is AppException ? err.message : l.tr('recogFailed'),
       );
       return;
     }
@@ -122,7 +121,7 @@ class IdentificationController extends StateNotifier<IdentifyState> {
     if (result.candidates.isEmpty) {
       state = state.copyWith(
         phase: IdentifyPhase.failure,
-        errorMessage: '这张照片里没有找到明显的花朵，可以走近一点、让花占满画面再拍一张',
+        errorMessage: l.tr('noFlower'),
       );
       return;
     }
@@ -180,10 +179,7 @@ class IdentificationController extends StateNotifier<IdentifyState> {
     final candidate = current.top;
     if (id == null || candidate == null) return;
 
-    state = state.copyWith(
-      phase: IdentifyPhase.enriching,
-      clearError: true,
-    );
+    state = state.copyWith(phase: IdentifyPhase.enriching, clearError: true);
     final item = HistoryItem(
       id: id,
       createdAt: DateTime.now(),
@@ -256,8 +252,10 @@ class IdentificationController extends StateNotifier<IdentifyState> {
       profile = r.value;
       if (r.isErr) {
         final e = r.error;
-        debugPrint('[IdentificationController] 大模型生成失败: '
-            '${e is AppException ? e.message : e}');
+        debugPrint(
+          '[IdentificationController] 大模型生成失败: '
+          '${e is AppException ? e.message : e}',
+        );
       }
     }
 
@@ -292,7 +290,8 @@ class IdentificationController extends StateNotifier<IdentifyState> {
   Future<PlantProfile?> _offlineProfile(PlantCandidate candidate) async {
     try {
       final library = await _ref.read(plantLibraryProvider.future);
-      final hit = library.byScientificName(candidate.scientificName) ??
+      final hit =
+          library.byScientificName(candidate.scientificName) ??
           library.byCommonName(candidate.commonName);
       return hit?.toProfile();
     } catch (_) {
@@ -305,5 +304,5 @@ class IdentificationController extends StateNotifier<IdentifyState> {
 
 final identificationProvider =
     StateNotifierProvider<IdentificationController, IdentifyState>(
-  (ref) => IdentificationController(ref),
-);
+      (ref) => IdentificationController(ref),
+    );

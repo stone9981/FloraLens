@@ -4,12 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/baike.dart';
-import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../data/local/settings_store.dart';
 import '../../data/models/history_item.dart';
 import '../../data/models/plant.dart';
 import '../../data/models/plant_profile.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/identification_provider.dart';
 import '../../services/result_markdown.dart';
 import '../../widgets/common.dart';
@@ -46,10 +46,9 @@ class _ResultPageState extends ConsumerState<ResultPage> {
       final state = ref.read(identificationProvider);
       if (state.imagePath != widget.args.imagePath ||
           state.phase == IdentifyPhase.idle) {
-        ref.read(identificationProvider.notifier).identify(
-              widget.args.imagePath,
-              source: widget.args.source,
-            );
+        ref
+            .read(identificationProvider.notifier)
+            .identify(widget.args.imagePath, source: widget.args.source);
       }
     });
   }
@@ -68,7 +67,8 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         data: ShareCardData(
           imagePath: state.imagePath ?? widget.args.imagePath,
           candidate: candidate,
-          profile: state.profile ??
+          profile:
+              state.profile ??
               PlantProfile.offline(
                 scientificName: candidate.scientificName,
                 title: candidate.displayName,
@@ -89,9 +89,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         current: ref.read(identificationProvider).top,
         onPicked: (candidate) {
           Navigator.of(context).pop();
-          ref
-              .read(identificationProvider.notifier)
-              .applyCandidate(candidate);
+          ref.read(identificationProvider.notifier).applyCandidate(candidate);
         },
       ),
     );
@@ -104,9 +102,9 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     final uri = Baike.itemUrl(Baike.bestName(candidate, state.profile));
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.inAppWebView);
-      if (!ok && mounted) _toast(AppStrings.cannotOpenBaike);
+      if (!ok && mounted) _toast(context.l10n.tr('cannotOpenBaike'));
     } catch (_) {
-      if (mounted) _toast(AppStrings.cannotOpenBaike);
+      if (mounted) _toast(context.l10n.tr('cannotOpenBaike'));
     }
   }
 
@@ -115,6 +113,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     final candidate = state.top;
     if (candidate == null) return;
     final md = buildResultMarkdown(
+      l10n: context.l10n,
       candidate: candidate,
       profile: state.profile,
       source: state.source,
@@ -122,9 +121,9 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     );
     try {
       await Clipboard.setData(ClipboardData(text: md));
-      if (mounted) _toast(AppStrings.copiedMarkdown);
+      if (mounted) _toast(context.l10n.tr('copiedMarkdown'));
     } catch (_) {
-      if (mounted) _toast(AppStrings.copyMarkdownFailed);
+      if (mounted) _toast(context.l10n.tr('copyMarkdownFailed'));
     }
   }
 
@@ -145,15 +144,17 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.arrow_back_rounded),
         ),
-        title: Text(state.phase == IdentifyPhase.success
-            ? (state.profile?.title ?? '识别结果')
-            : AppStrings.identifying),
+        title: Text(
+          state.phase == IdentifyPhase.success
+              ? (state.profile?.title ?? context.l10n.tr('resultTitle'))
+              : context.l10n.tr('identifying'),
+        ),
         actions: state.phase == IdentifyPhase.success
             ? <Widget>[
                 IconButton(
                   onPressed: () => _copyMarkdown(state),
                   icon: const Icon(Icons.copy_all_rounded),
-                  tooltip: AppStrings.copyMarkdown,
+                  tooltip: context.l10n.tr('copyMarkdown'),
                 ),
               ]
             : null,
@@ -161,35 +162,32 @@ class _ResultPageState extends ConsumerState<ResultPage> {
       body: SafeArea(
         child: switch (state.phase) {
           IdentifyPhase.idle || IdentifyPhase.identifying => _Progress(
-              message: AppStrings.identifying,
-              hint: AppStrings.identifyingHint,
-              imagePath: imagePath,
-            ),
+            message: context.l10n.tr('identifying'),
+            hint: context.l10n.tr('identifyingHint'),
+            imagePath: imagePath,
+          ),
           IdentifyPhase.enriching => _Progress(
-              message: AppStrings.enriching,
-              hint: AppStrings.enrichingHint,
-              imagePath: imagePath,
-            ),
+            message: context.l10n.tr('enriching'),
+            hint: context.l10n.tr('enrichingHint'),
+            imagePath: imagePath,
+          ),
           IdentifyPhase.failure => _Failure(
-              message: state.errorMessage ?? AppStrings.unknownError,
-              imagePath: imagePath,
-              onRetry: () => ref
-                  .read(identificationProvider.notifier)
-                  .identify(
-                    widget.args.imagePath,
-                    source: widget.args.source,
-                  ),
-              onManual: _openManualPick,
-            ),
+            message: state.errorMessage ?? context.l10n.tr('unknownError'),
+            imagePath: imagePath,
+            onRetry: () => ref
+                .read(identificationProvider.notifier)
+                .identify(widget.args.imagePath, source: widget.args.source),
+            onManual: _openManualPick,
+          ),
           IdentifyPhase.success => _Success(
-              state: state,
-              imagePath: imagePath,
-              onCard: () => _openCard(state),
-              onNameTap: () => _openBaike(state),
-              onRegenerate: () =>
-                  ref.read(identificationProvider.notifier).regenerateProfile(),
-              onManual: _openManualPick,
-            ),
+            state: state,
+            imagePath: imagePath,
+            onCard: () => _openCard(state),
+            onNameTap: () => _openBaike(state),
+            onRegenerate: () =>
+                ref.read(identificationProvider.notifier).regenerateProfile(),
+            onManual: _openManualPick,
+          ),
         },
       ),
     );
@@ -234,7 +232,10 @@ class _Progress extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
-        Text(hint, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+        Text(
+          hint,
+          style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+        ),
         const Spacer(),
       ],
     );
@@ -269,13 +270,13 @@ class _Failure extends StatelessWidget {
           const SizedBox(height: 20),
           ErrorBanner(message: message, onRetry: onRetry),
           const SizedBox(height: 14),
-          const Text(
-            AppStrings.resultUnknownHint,
-            style: TextStyle(fontSize: 12.5, height: 1.6),
+          Text(
+            context.l10n.tr('resultUnknownHint'),
+            style: const TextStyle(fontSize: 12.5, height: 1.6),
           ),
           const SizedBox(height: 16),
           PrimaryButton(
-            label: AppStrings.manualSearch,
+            label: context.l10n.tr('manualSearch'),
             icon: Icons.search_rounded,
             outlined: true,
             onPressed: onManual,
@@ -328,18 +329,26 @@ class _Success extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               _TitleBlock(
-                  candidate: candidate, profile: profile, onNameTap: onNameTap),
+                candidate: candidate,
+                profile: profile,
+                onNameTap: onNameTap,
+              ),
               const SizedBox(height: 14),
               _MetaRow(candidate: candidate, profile: profile),
               if (state.profileFromCache)
-                const Padding(
-                  padding: EdgeInsets.only(top: 12),
-                  child: TagChip('离线资料', icon: Icons.cloud_off_outlined),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: TagChip(
+                    context.l10n.tr('offlineData'),
+                    icon: Icons.cloud_off_outlined,
+                  ),
                 ),
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: TagChip(
-                  '已存入我的记录 · ${state.source.label}',
+                  context.l10n.tr('savedToRecords', <String>[
+                    context.l10n.source(state.source.id),
+                  ]),
                   icon: Icons.bookmark_outline_rounded,
                 ),
               ),
@@ -348,13 +357,15 @@ class _Success extends StatelessWidget {
                 _FallbackBanner(
                   note: note,
                   revalidated: revalidated,
-                  confirmedLabel: result?.confirmedBy?.label,
+                  confirmedLabel: result?.confirmedBy != null
+                      ? context.l10n.engine(result!.confirmedBy!.id)
+                      : null,
                   uncertain: candidate.confidencePercent < 60,
                 ),
               ],
               if (profile != null && profile.summary.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 18),
-                SectionTitle(AppStrings.storyLabel),
+                SectionTitle(context.l10n.tr('storyLabel')),
                 Text(
                   profile.story.isNotEmpty ? profile.story : profile.summary,
                   style: const TextStyle(fontSize: 14, height: 1.85),
@@ -362,7 +373,7 @@ class _Success extends StatelessWidget {
               ],
               if (profile != null && profile.careTips.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 18),
-                SectionTitle(AppStrings.careLabel),
+                SectionTitle(context.l10n.tr('careLabel')),
                 ...profile.careTips.map(
                   (tip) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -371,8 +382,11 @@ class _Success extends StatelessWidget {
                       children: <Widget>[
                         const Padding(
                           padding: EdgeInsets.only(top: 6),
-                          child: Icon(Icons.circle, size: 5,
-                              color: AppTheme.brandGreen),
+                          child: Icon(
+                            Icons.circle,
+                            size: 5,
+                            color: AppTheme.brandGreen,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -397,7 +411,7 @@ class _Success extends StatelessWidget {
               if (state.result != null &&
                   state.result!.candidates.length > 1) ...<Widget>[
                 const SizedBox(height: 20),
-                SectionTitle(AppStrings.similarLabel),
+                SectionTitle(context.l10n.tr('similarLabel')),
                 _SimilarList(
                   candidates: state.result!.candidates.skip(1).take(4).toList(),
                 ),
@@ -417,8 +431,11 @@ class _Success extends StatelessWidget {
 }
 
 class _TitleBlock extends StatelessWidget {
-  const _TitleBlock(
-      {required this.candidate, required this.profile, this.onNameTap});
+  const _TitleBlock({
+    required this.candidate,
+    required this.profile,
+    this.onNameTap,
+  });
 
   final PlantCandidate candidate;
   final PlantProfile? profile;
@@ -427,8 +444,9 @@ class _TitleBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final title =
-        (profile?.title.isNotEmpty ?? false) ? profile!.title : candidate.displayName;
+    final title = (profile?.title.isNotEmpty ?? false)
+        ? profile!.title
+        : candidate.displayName;
     final titleStyle = const TextStyle(
       fontSize: 27,
       fontWeight: FontWeight.w700,
@@ -439,16 +457,17 @@ class _TitleBlock extends StatelessWidget {
         : GestureDetector(
             onTap: onNameTap,
             child: Tooltip(
-              message: AppStrings.openBaike,
+              message: context.l10n.tr('openBaike'),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: <Widget>[
-                  Flexible(
-                    child: Text(title, style: titleStyle),
-                  ),
+                  Flexible(child: Text(title, style: titleStyle)),
                   const SizedBox(width: 6),
-                  Icon(Icons.open_in_new_rounded,
-                      size: 18, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Icons.open_in_new_rounded,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ],
               ),
             ),
@@ -467,7 +486,7 @@ class _TitleBlock extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                '${AppStrings.confidenceLabel} ${candidate.confidencePercent}%',
+                '${context.l10n.tr('confidenceLabel')} ${candidate.confidencePercent}%',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -532,7 +551,9 @@ class _FallbackBanner extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                revalidated ? '已交叉复核' : '识别存疑',
+                revalidated
+                    ? context.l10n.tr('revalidated')
+                    : context.l10n.tr('uncertain'),
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -549,14 +570,11 @@ class _FallbackBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            note,
-            style: const TextStyle(fontSize: 12.5, height: 1.6),
-          ),
+          Text(note, style: const TextStyle(fontSize: 12.5, height: 1.6)),
           if (uncertain && !revalidated) ...<Widget>[
             const SizedBox(height: 6),
             Text(
-              AppStrings.hybridUnsure,
+              context.l10n.tr('hybridUnsure'),
               style: TextStyle(
                 fontSize: 11.5,
                 height: 1.6,
@@ -580,44 +598,48 @@ class _MetaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = <MapEntry<String, String>>[
       if (candidate.familyGenus.isNotEmpty)
-        MapEntry(AppStrings.familyLabel, candidate.familyGenus),
+        MapEntry(context.l10n.tr('familyLabel'), candidate.familyGenus),
       if (profile?.bloomTime.isNotEmpty ?? false)
-        MapEntry(AppStrings.bloomsLabel, profile!.bloomTime),
+        MapEntry(context.l10n.tr('bloomsLabel'), profile!.bloomTime),
       if (profile?.origin.isNotEmpty ?? false)
-        MapEntry(AppStrings.originLabel, profile!.origin),
+        MapEntry(context.l10n.tr('originLabel'), profile!.origin),
       if (profile?.language.isNotEmpty ?? false)
-        MapEntry(AppStrings.languageLabel, profile!.language),
+        MapEntry(context.l10n.tr('languageLabel'), profile!.language),
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
     return SoftCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Column(
         children: rows
-            .map((e) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      SizedBox(
-                        width: 52,
-                        child: Text(
-                          e.key,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+            .map(
+              (e) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        e.key,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      Expanded(
-                        child: Text(
-                          e.value,
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                    Expanded(
+                      child: Text(
+                        e.value,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
-                ))
+                    ),
+                  ],
+                ),
+              ),
+            )
             .toList(),
       ),
     );
@@ -637,8 +659,7 @@ class _SimilarList extends ConsumerWidget {
             (c) => ListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
-              title: Text(c.displayName,
-                  style: const TextStyle(fontSize: 14)),
+              title: Text(c.displayName, style: const TextStyle(fontSize: 14)),
               subtitle: Text(
                 c.scientificName,
                 style: const TextStyle(fontSize: 11.5),
@@ -681,7 +702,7 @@ class _BottomBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             PrimaryButton(
-              label: AppStrings.createCard,
+              label: context.l10n.tr('createCard'),
               icon: Icons.auto_awesome_rounded,
               onPressed: onCard,
             ),
@@ -690,7 +711,7 @@ class _BottomBar extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: PrimaryButton(
-                    label: AppStrings.regenerate,
+                    label: context.l10n.tr('regenerate'),
                     outlined: true,
                     expand: false,
                     onPressed: onRegenerate,
@@ -699,7 +720,7 @@ class _BottomBar extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: PrimaryButton(
-                    label: AppStrings.manualSearch,
+                    label: context.l10n.tr('manualSearch'),
                     outlined: true,
                     expand: false,
                     onPressed: onManual,

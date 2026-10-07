@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants.dart';
 import '../../core/routes.dart';
 import '../../core/theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/app_providers.dart';
 
 /// 启动页：预热词典与历史，然后进主页。
@@ -79,7 +79,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
               ),
               const SizedBox(height: 22),
               Text(
-                AppStrings.appName,
+                context.l10n.tr('appName'),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
@@ -89,7 +89,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
               ),
               const SizedBox(height: 8),
               Text(
-                AppStrings.appTagline,
+                context.l10n.tr('appTagline'),
                 style: TextStyle(
                   fontSize: 14,
                   color: scheme.onSurfaceVariant,
