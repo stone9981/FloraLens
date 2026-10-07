@@ -29,7 +29,7 @@
 | 商店名 | `PetalLens`（可加「PetalLens 识花」） | `PetalLens` |
 | 副标题 Subtitle | 拍照识别植物与花卉 | Identify plants by photo（24 字符，<30 上限；flowers 由关键词覆盖） |
 | 关键词 Keywords（逗号分隔、无空格、≤100 字符） | `植物识别,识花,花草,拍照识图,园艺,盆栽,树叶,养护` | `plant identifier,flower identifier,garden,botany,leaf,plant care` |
-| 描述 Description | 原创中文介绍（功能/Pro/去广告） | 原创英文介绍（功能/Pro/ad-free） |
+| 描述 Description | 见下方「三语描述文案」 | 见下方「三语描述文案」 |
 | 截图/预览 | 可选本地化；展示真实界面 | 可选本地化；展示真实界面 |
 
 - [ ] 两套关键词/描述均为**原创**，不包含竞品 app 名或商标词（避免 4.1 / 元数据违规）
@@ -44,12 +44,73 @@
 | 商店名 | `PetalLens`（可加「PetalLens 識花」） | 同左 |
 | 副标题 Subtitle | `拍照識別植物與花卉`（9 字，<30） | `拍照辨識植物與花卉` |
 | 关键词 Keywords | `植物識別,識花,花草,拍照識圖,園藝,盆栽,樹葉,養護` | `植物辨識,花草辨識,植物圖鑑,拍照識花,園藝,盆栽,樹葉,養護` |
-| 描述 Description | 原创繁体中文介绍（功能/Pro/去广告） | 同左 |
+| 描述 Description | 见下方「三语描述文案」 | 同左 |
 | 截图/预览 | 可选本地化；展示真实界面 | 同左 |
 
 - [ ] 台湾用户更惯用「辨識」而非「識別」，植物类 app 也常用「植物圖鑑」；用右列写法更地道，香港/澳门两者皆接受
 - [ ] 描述正文同样全繁体（含标点符号习惯），不要出现简体字
 - [ ] 三套（简/繁/英）关键词各自独立、均原创，互不复制对方语言词
+
+### 三语描述文案（可直接粘贴到对应本地化 Description 框）
+
+> 均为原创、不含竞品名/商标词；付费后确有去广告，与功能一致。每个本地化框单独粘贴对应语言全文。
+
+**① 简体中文（中国大陆）**
+```
+PetalLens 用照片识别植物与花卉。拍照或从相册选图，AI 即时生成植物档案——名称、科属、花期、养护要点、是否有毒等，适合园艺爱好者、徒步与自然观察。
+
+【主要功能】
+• 拍照或选图识别植物与花卉
+• AI 生成植物档案：科属、花期、养护建议、毒性提示
+• 识别历史本地保存，随时回看
+• 分享卡片带拍摄地点水印
+
+【升级 Pro】
+• 去掉广告，体验更干净
+• 解锁更详细的植物档案与无限次识别
+• 支持按月或按年订阅（年付更划算），并支持恢复购买
+
+去广告也可单独一次性购买，永久移除广告。
+```
+
+**② English (U.S.)**
+```
+PetalLens identifies plants and flowers from a photo. Snap or pick from your library, and AI instantly builds a plant profile — name, family, bloom season, care tips, toxicity, and more. Built for gardeners, hikers, and nature lovers.
+
+Key features:
+• Identify plants & flowers by camera or photo library
+• AI-generated profiles: family, bloom season, care tips, toxicity notes
+• Save identification history on device, revisit anytime
+• Share cards with a location watermark
+
+Go Pro:
+• Ad-free, cleaner experience
+• Unlock detailed profiles and unlimited identifications
+• Monthly or yearly subscription (yearly saves more); restore purchases supported
+
+Remove Ads is also available as a one-time purchase for permanent ad removal.
+```
+
+**③ 繁體中文（中国台湾 / 中国香港 / 中国澳门）**
+```
+PetalLens 用照片辨識植物與花卉。拍照或從相簿選圖，AI 即時生成植物檔案——名稱、科屬、花期、養護要點、是否有毒等，適合園藝愛好者、登山與自然觀察。
+
+【主要功能】
+• 拍照或選圖辨識植物與花卉
+• AI 生成植物檔案：科屬、花期、養護建議、毒性提示
+• 辨識紀錄本機保存，隨時回看
+• 分享卡片帶拍攝地點浮水印
+
+【升級 Pro】
+• 去掉廣告，體驗更乾淨
+• 解鎖更詳細的植物檔案與無限次辨識
+• 支援按月或按年訂閱（年付更划算），並支援恢復購買
+
+去廣告也可單次購買，永久移除廣告。
+```
+
+- [ ] 三套描述均为原创、与功能一致（写了去广告，付费后确有去广告）
+- [ ] 繁体版全文繁体，无简体字
 
 ### App Information 其他合规字段（FloraLens = 拍照识植物工具 app，非游戏/非医疗/非社交）
 
