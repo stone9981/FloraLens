@@ -45,9 +45,6 @@ dist/
 **/ios/Flutter/ephemeral
 **/ios/Flutter/flutter_export_environment.sh
 **/ios/Runner/GeneratedPluginRegistrant.swift
-**/ios/Runner/Info.plist
-**/ios/Runner/Release.entitlements
-**/ios/Runner/Debug.entitlements
 **/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 **/ios/Runner.xcworkspace/contents.xcworkspacedata
 **/ios/xcuserdata
