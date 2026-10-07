@@ -4,42 +4,7 @@ import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-/// 广告位与 App ID 配置。
-///
-/// 当前填的是 Google 官方「测试 ID」，直接跑起来就能看到测试广告、不会产生费用。
-/// 上线前：
-/// 1. 把 [useTestAds] 设为 false；
-/// 2. 把 [bannerAdUnit] / [interstitialAdUnit] 换成 AdMob 后台的真实广告单元 ID；
-/// 3. 把 AndroidManifest 与 Info.plist 里的 APPLICATION_ID 也换成真实 App ID。
-class AdConfig {
-  /// true=使用测试广告单元（开发期安全）；上线务必改 false。
-  static const bool useTestAds = true;
-
-  /// Demo App ID（测试用，可放心提交；正式环境在原生配置里替换）。
-  static const String androidAppId = 'ca-app-pub-3940256099942544~3347511713';
-  static const String iosAppId = 'ca-app-pub-3940256099942544~3347511713';
-
-  static const String _testBannerAndroid =
-      'ca-app-pub-3940256099942544/6300978111';
-  static const String _testBannerIos = 'ca-app-pub-3940256099942544/2934735716';
-  static const String _testInterstitialAndroid =
-      'ca-app-pub-3940256099942544/1033173712';
-  static const String _testInterstitialIos =
-      'ca-app-pub-3940256099942544/4411468910';
-
-  /// 正式广告单元 ID（占位，上线替换）。
-  static const String bannerAdUnit = 'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
-  static const String interstitialAdUnit =
-      'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
-
-  static String get bannerAdUnitId => useTestAds
-      ? (Platform.isIOS ? _testBannerIos : _testBannerAndroid)
-      : bannerAdUnit;
-
-  static String get interstitialAdUnitId => useTestAds
-      ? (Platform.isIOS ? _testInterstitialIos : _testInterstitialAndroid)
-      : interstitialAdUnit;
-}
+import '../config/app_config.dart';
 
 /// AdMob 广告服务：初始化、横幅/插屏加载与展示，以及识别计数（用于插屏阈值）。
 ///
@@ -84,7 +49,7 @@ class AdService {
   Future<void> preloadInterstitial() async {
     if (_interstitial != null) return;
     await InterstitialAd.load(
-      adUnitId: AdConfig.interstitialAdUnitId,
+      adUnitId: AdsConfig.interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) => _interstitial = ad,
@@ -138,7 +103,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   void initState() {
     super.initState();
     _banner = BannerAd(
-      adUnitId: AdConfig.bannerAdUnitId,
+      adUnitId: AdsConfig.bannerAdUnitId,
       size: widget.size,
       request: const AdRequest(),
       listener: BannerAdListener(

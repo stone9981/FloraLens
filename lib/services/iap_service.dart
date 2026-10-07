@@ -3,28 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
-/// 内购商品 ID。
-///
-/// 必须在 App Store Connect（iOS）/ Google Play Console（Android）里创建
-/// 对应商品，且 ID 要与这里完全一致。当前是占位 ID，上线前替换。
-///
-/// 注意：iOS 上架前还需在 App Store Connect 签署《付费 App 协议》，
-/// 否则 [InAppPurchase.isAvailable] 会返回 false。
-class IapProducts {
-  /// 自动续期订阅：Pro 会员（月付）。
-  static const String proMonthly = 'com.floralens.pro.monthly';
-
-  /// 自动续期订阅：Pro 会员（年付，更划算）。
-  static const String proYearly = 'com.floralens.pro.yearly';
-
-  /// 非消耗型：永久去广告（也可并入 Pro，按需取舍）。
-  static const String removeAds = 'com.floralens.remove_ads';
-
-  static const List<String> all = <String>[proMonthly, proYearly, removeAds];
-
-  /// 订阅类商品走 buyNonConsumable（续期由系统托管）。
-  static bool isSubscription(String id) => id == proMonthly || id == proYearly;
-}
+import '../config/app_config.dart';
 
 /// 苹果 / Google Play 内购服务。
 ///
