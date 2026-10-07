@@ -1,0 +1,6 @@
+/* Privacy usage descriptions — English (en) */
+"NSCameraUsageDescription" = "Used to take photos to identify plants.";
+"NSLocationWhenInUseUsageDescription" = "Used to add the capture location (city/district only) to the share-card watermark. Off by default; you can turn it off anytime in Settings.";
+"NSMicrophoneUsageDescription" = "Records audio when capturing video (not used for photo-only capture).";
+"NSPhotoLibraryAddUsageDescription" = "Used to save identification cards to your photo library.";
+"NSUserTrackingUsageDescription" = "Used to show you more relevant ads.";

@@ -1,0 +1,6 @@
+/* 隐私用途描述 — 简体中文 (zh-Hans) */
+"NSCameraUsageDescription" = "用于拍照识别植物";
+"NSLocationWhenInUseUsageDescription" = "用于把拍摄地点（仅到市/区）写进分享卡片水印，默认关闭，可随时在设置里关闭。";
+"NSMicrophoneUsageDescription" = "视频录制时收录声音（仅拍照时不使用）";
+"NSPhotoLibraryAddUsageDescription" = "用于保存识别卡片到相册";
+"NSUserTrackingUsageDescription" = "用于向您展示更相关的广告";
