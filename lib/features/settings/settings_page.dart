@@ -681,7 +681,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   (p) => DropdownMenuItem<String>(
                     value: p.id,
                     child: Text(
-                      p.name,
+                      context.l10n.tr('presetName_${p.id}'),
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 14),
                     ),
@@ -703,7 +703,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           if (preset.hint != null) ...<Widget>[
             const SizedBox(height: 8),
             Text(
-              preset.hint!,
+              context.l10n.tr('presetHint_${preset.id}'),
               style: TextStyle(
                 fontSize: 11.5,
                 height: 1.6,
@@ -719,8 +719,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           TextField(
             controller: TextEditingController(text: llm.baseUrl),
             key: ValueKey('base_${llm.baseUrl}'),
-            decoration: const InputDecoration(
-              labelText: 'Base URL',
+            decoration: InputDecoration(
+              labelText: context.l10n.tr('baseUrlLabel'),
               hintText: 'https://api.deepseek.com/v1',
             ),
             onChanged: (v) => controller.setLlm(llm.copyWith(baseUrl: v)),
@@ -729,8 +729,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           TextField(
             controller: TextEditingController(text: llm.model),
             key: ValueKey('model_${llm.model}'),
-            decoration: const InputDecoration(
-              labelText: '模型名',
+            decoration: InputDecoration(
+              labelText: context.l10n.tr('modelLabel'),
               hintText: 'deepseek-chat',
             ),
             onChanged: (v) => controller.setLlm(llm.copyWith(model: v)),

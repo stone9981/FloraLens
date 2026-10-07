@@ -38,9 +38,12 @@ final llmClientProvider = Provider<LlmClient>((ref) {
 final profileGeneratorProvider = Provider<PlantProfileGenerator>((ref) {
   final settings = ref.watch(settingsProvider);
   final client = ref.watch(llmClientProvider);
+  final l10n = ref.watch(appLocalizationsProvider);
   return PlantProfileGenerator(
     client,
-    modelLabel: settings.llm.model.isEmpty ? '大模型' : settings.llm.model,
+    modelLabel: settings.llm.model.isEmpty
+        ? l10n.tr('modelSection')
+        : settings.llm.model,
   );
 });
 
