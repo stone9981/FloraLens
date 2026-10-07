@@ -6,6 +6,37 @@
 
 ---
 
+## App Store 命名与元数据（商店展示名：PetalLens）
+
+### 命名决策
+- 商店展示名定为 **`PetalLens`**（已逐个核实 `VerdeLens` / `PetalLens` / `GardenLens` 均未被占用，最终选 PetalLens）。
+- **为什么不用 FloraLens**：App Store 已有一个正经的 iPad app 就叫 `FloraLens`（他人品牌）。直接用会触发 **Guideline 4.1 品牌混淆**被拒；"FloraLens AI" 只是在他人品牌词后追加，风险仍为中/高，故改用明显区分、但保留 `Lens` 调性的 `PetalLens`（Petal=花瓣 + Lens=识别，最贴「拍照识花」核心功能）。
+- **品牌资产保留**：开发者名（Developer / Artist Name）仍可填 `FloraLens`（这是账号名，不受 app 名唯一性限制，商店页底部照常显示 FloraLens）；副标题/描述可写 "from FloraLens"。代码内 `CFBundleDisplayName`、logo、域名维持 FloraLens 不变。
+
+### 创建 New App 时填写
+- [ ] Platforms：勾 **iOS**
+- [ ] App Name：`PetalLens`
+- [ ] Primary Language：简体中文 或 English（二选一，另一种语言靠下方元数据补）
+- [ ] Bundle ID：必须与该 App 的 **Explicit App ID 完全一致**（如 `com.floralens.<suffix>`），且之前已在 Developer 后台建好、已勾 In-App Purchase
+- [ ] SKU：内部代号，字母数字串，**用户不可见**
+- [ ] ⚠️ Bundle ID 一旦关联并提交即**固定**，改需重建 App 记录、丢失审核历史；App Name 后续可作元数据修改，风险低
+
+### 双语言元数据（按设备系统语言展示）
+路径：App Store Connect → 你的 App → **App Information → Localizable Information**，分别添加 **简体中文** 与 **English (U.S.)** 两套；同一 App 在不同国家商店显示对应语言。
+
+| 字段 | 简体中文 | English (U.S.) |
+| --- | --- | --- |
+| 商店名 | `PetalLens`（可加「PetalLens 识花」） | `PetalLens` |
+| 副标题 Subtitle | 拍照识别植物与花卉 | Identify plants & flowers by photo |
+| 关键词 Keywords（逗号分隔、无空格、≤100 字符） | `植物识别,识花,花草,拍照识图,园艺,盆栽,树叶,养护` | `plant identifier,flower identifier,garden,botany,leaf,plant care` |
+| 描述 Description | 原创中文介绍（功能/Pro/去广告） | 原创英文介绍（功能/Pro/ad-free） |
+| 截图/预览 | 可选本地化；展示真实界面 | 可选本地化；展示真实界面 |
+
+- [ ] 两套关键词/描述均为**原创**，不包含竞品 app 名或商标词（避免 4.1 / 元数据违规）
+- [ ] 描述与 app 实际功能一致（写了去广告，付费后确有去广告）
+
+---
+
 ## 0. 前置：协议与税务（不上架一定会失败）
 
 App Store 的内购依赖**账户级协议**，必须在创建商品前完成，否则 `InAppPurchase.isAvailable()` 返回 false、商品查询为空。
