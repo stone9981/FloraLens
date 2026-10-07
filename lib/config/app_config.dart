@@ -17,7 +17,7 @@ class AdsConfig {
   AdsConfig._();
 
   /// true=使用 Google 官方测试 ID（开发期安全，不会产生费用）；上线务必改 false。
-  static const bool useTestAds = true;
+  static const bool useTestAds = false;
 
   // ---------------------- 生产环境占位 ID（上线替换） ----------------------
 
@@ -27,15 +27,15 @@ class AdsConfig {
 
   /// 生产 App ID（iOS）。
   static const String productionAppIdIos =
-      'ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx';
+      'ca-app-pub-8786681445100249~9395633460';
 
   /// 生产横幅广告单元 ID。
   static const String productionBannerAdUnit =
-      'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
+      'ca-app-pub-8786681445100249/6319622997';
 
   /// 生产插屏广告单元 ID。
   static const String productionInterstitialAdUnit =
-      'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
+      'ca-app-pub-8786681445100249/2282421043';
 
   // ---------------------- 以下为 Google 官方测试 ID（可直接提交） ----------------------
 
