@@ -35,6 +35,29 @@
 - [ ] 两套关键词/描述均为**原创**，不包含竞品 app 名或商标词（避免 4.1 / 元数据违规）
 - [ ] 描述与 app 实际功能一致（写了去广告，付费后确有去广告）
 
+### App Information 其他合规字段（FloraLens = 拍照识植物工具 app，非游戏/非医疗/非社交）
+
+> 路径：App Store Connect → 你的 App → **App Information / App Store** 标签页。以下逐项给出推荐填法。
+
+| 字段 | 推荐填法 | 说明 |
+| --- | --- | --- |
+| **Category（类别）** | Primary=`Reference`（参考）+ Secondary=`Education`（教育） | 识花识植物属工具型图鉴，Reference 最贴切；次类别可选 Education 或 Lifestyle，提升对应分区曝光 |
+| **Content Rights（内容版权）** | **No**（不包含第三方内容） | app 仅展示 AI 生成的植物档案（你签的 LLM API 输出）+ 用户自己的照片，未内置/抓取维基图库、PlantNet 等第三方版权素材；若以后接入外部图库再改 Yes 并确认已获授权 |
+| **License Agreement（许可协议）** | **Standard EULA（Apple 标准许可协议）** | 零成本、覆盖基本条款，绝大多数独立 app 用之；产品页甚至不显示许可链接。除非有特定法律条款，否则不要写 Custom EULA |
+| **Age Ratings（年龄分级）** | 问卷全选 None/No → 结果 **4+** | 无暴力/色情/赌博/医疗建议；User-Generated Content 也选 None（用户照片仅本地处理、不形成公开社交流）；位置只写水印不分享他人 → 不影响分级。植物类工具标准档 |
+| **Learn More About Age Ratings** | 帮助链接，不用填 | 点开看说明即可 |
+| **App Encryption Documentation（加密文档）** | 不提交（标准豁免） | app 仅用标准 HTTPS/TLS 联网，属加密出口合规**豁免类**；提审遇「Does your app use encryption?」选标准豁免项即可。省事做法：在 Agreements, Tax, and Banking 底部做一次年度 Export Compliance 认证，之后各版本免重复答 |
+| **App Store Regulations & Permits（监管许可）** | 留空 / N/A | 受监管行业（金融/新闻/医药等）许可区，FloraLens 不沾 |
+| **China Mainland ICP Filing Number（中国大陆 ICP 备案号）** | ⚠️ 初期建议**排除中国大陆区**，不填 | 若想在中国大陆上架需 MIIT 备案号且与简体中文元数据一致；更关键：FloraLens 有 IAP+广告=经营性 app，按中国规定需 **ICP 经营许可证（B25）**而非基础备案，门槛高。初期在 Pricing & Availability 把「中国大陆」移出可售地区，先在全球其他区上架，不被 ICP 卡住 |
+| **Vietnam Game License（越南游戏许可）** | 忽略 | 仅针对游戏在越南分发，FloraLens 非游戏 |
+| **Regulated Medical Devices（受监管医疗设备）** | 不适用 / No | 只有自称医疗设备/做医疗诊断才相关，识植物不沾 |
+| **App Store Server Notifications（服务器通知）** | 留空（可选） | 把购买/订阅事件推到你自己的服务器；FloraLens 走客户端本地处理 IAP（`purchaseStream` + `isPro` 持久化），无后端，不需配 |
+| **App-Specific Shared Secret（App 专用共享密钥）** | 留空（可选） | 用于在你服务器校验 IAP 收据；同样走客户端本地校验、无后端服务器，不需要 |
+
+- [ ] 分级问卷做完后确认结果 = **4+**（与「适合 4 岁以上」一致）
+- [ ] 初期 Pricing & Availability 暂不包含「中国大陆」，避免 ICP 许可前置卡上架
+- [ ] 加密合规走标准豁免，不提交任何加密文档
+
 ---
 
 ## 0. 前置：协议与税务（不上架一定会失败）
