@@ -38,6 +38,12 @@ class HistoryRepository {
       final items = list
           .map((e) => HistoryItem.fromJson(e as Map<String, dynamic>))
           .where((e) => e.id.isNotEmpty)
+          .map(
+            (e) => e.copyWith(
+              imagePath: _toAbsolute(e.imagePath),
+              cardPath: e.cardPath == null ? null : _toAbsolute(e.cardPath!),
+            ),
+          )
           .toList()
         ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return items;
@@ -130,8 +136,42 @@ class HistoryRepository {
 
   Future<void> _writeAll(List<HistoryItem> items) async {
     await _indexFile.parent.create(recursive: true);
-    final data = items.map((e) => e.toJson()).toList();
+    // 只持久化相对路径，避免 App 重装后沙盒容器 UUID 变化导致绝对路径失效。
+    final data = items
+        .map(
+          (e) => e
+              .copyWith(
+                imagePath: _toRelative(e.imagePath),
+                cardPath: e.cardPath == null ? null : _toRelative(e.cardPath!),
+              )
+              .toJson(),
+        )
+        .toList();
     await _indexFile.writeAsString(jsonEncode(data));
+  }
+
+  /// 把存储路径解析为当前容器下的绝对路径。
+  ///
+  /// 历史原因：旧数据存的是含沙盒容器 UUID 的绝对路径，App 重装后 UUID 会变，
+  /// 旧路径就失效了。这里优先用文件是否真实存在来判断；若不存在则退回到
+  /// "以 history/ 为起点的相对路径 + 当前 _root" 拼出的新绝对路径。
+  String _toAbsolute(String path) {
+    if (path.isEmpty) return path;
+    if (path.startsWith('/')) {
+      if (File(path).existsSync()) return path;
+      final marker = path.indexOf('history/');
+      if (marker >= 0) return '${_root.path}/${path.substring(marker)}';
+      return path;
+    }
+    return '${_root.path}/$path';
+  }
+
+  /// 把绝对路径收敛为相对路径（以 history/ 为起点），用于持久化。
+  String _toRelative(String path) {
+    if (path.isEmpty) return path;
+    final marker = path.indexOf('history/');
+    if (marker >= 0) return path.substring(marker);
+    return path;
   }
 }
 

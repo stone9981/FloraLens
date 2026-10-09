@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../core/result.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
 import '../models/plant.dart';
 import '../models/plant_profile.dart';
@@ -389,12 +390,14 @@ String? extractJsonObject(String text) {
 
 /// 把大模型的自然语言输出加工成结构化 [PlantProfile]。
 class PlantProfileGenerator {
-  PlantProfileGenerator(this._client, {required this.modelLabel});
+  PlantProfileGenerator(this._client,
+      {required this.modelLabel, required this.l10n});
 
   final LlmClient _client;
   final String modelLabel;
+  final AppLocalizations l10n;
 
-  static const String _systemPrompt = '''
+  static const String _systemPromptZh = '''
 你是一位资深植物学家兼中文科普作家，正在为一款识花 App 撰写词条。
 要求：
 1. 内容准确、克制、优雅，避免过度营销口吻；
@@ -404,13 +407,56 @@ class PlantProfileGenerator {
 5. 古诗词必须真实存在且确实描写该植物，找不到就留空。
 ''';
 
+  static const String _systemPromptEn = '''
+You are a senior botanist and popular-science writer, writing an encyclopedia entry for a flower-identification app.
+Requirements:
+1. Accurate, restrained, elegant; avoid a marketing tone.
+2. Write for an English-speaking audience using standard English and widely used common names.
+3. Output only a single JSON object, no markdown code fences, no explanatory text.
+4. Fill every field you can; if unsure, use an empty string; do not invent specific numbers.
+5. Quotations or poems must be real and truly about the plant; otherwise leave empty.
+''';
+
+  String get _systemPrompt =>
+      l10n.locale.languageCode == 'en' ? _systemPromptEn : _systemPromptZh;
+
   String _userPrompt(PlantCandidate c) {
+    final isEn = l10n.locale.languageCode == 'en';
     final known = <String>[
-      '拉丁学名：${c.scientificName}',
-      if (c.commonName.isNotEmpty) '中文名：${c.commonName}',
-      if (c.familyGenus.isNotEmpty) '科属：${c.familyGenus}',
-      if (c.aliases.isNotEmpty) '别名：${c.aliases.join('、')}',
+      isEn ? 'Latin name: ${c.scientificName}' : '拉丁学名：${c.scientificName}',
+      if (c.commonName.isNotEmpty)
+        isEn ? 'Common name: ${c.commonName}' : '中文名：${c.commonName}',
+      if (c.familyGenus.isNotEmpty)
+        isEn
+            ? 'Family & genus: ${c.familyGenus}'
+            : '科属：${c.familyGenus}',
+      if (c.aliases.isNotEmpty)
+        isEn
+            ? 'Aliases: ${c.aliases.join(', ')}'
+            : '别名：${c.aliases.join('、')}',
     ].join('\n');
+
+    if (isEn) {
+      return '''
+Known plant info:
+$known
+
+Output the following JSON:
+{
+  "latinName": "full Latin name (authorship optional)",
+  "title": "most natural English name",
+  "summary": "one-sentence intro under 30 words, highlight the most distinctive trait",
+  "story": "a 110~160 word botanical note: morphology, habitat/distribution, or a fun fact",
+  "language": "flower meaning / symbolism, under 20 words",
+  "bloomTime": "flowering season, e.g. Apr-Jun",
+  "origin": "native range and main distribution",
+  "careTips": ["care tip 1", "care tip 2", "care tip 3"],
+  "tags": ["tag 1", "tag 2", "tag 3"],
+  "toxicityNote": "toxicity note; if non-toxic write \\"Non-toxic\\"",
+  "poemLine": "a real line of poetry or cultural quote about the plant"
+}
+''';
+    }
 
     return '''
 已知植物信息：

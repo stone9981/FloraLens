@@ -44,6 +44,7 @@ final profileGeneratorProvider = Provider<PlantProfileGenerator>((ref) {
     modelLabel: settings.llm.model.isEmpty
         ? l10n.tr('modelSection')
         : settings.llm.model,
+    l10n: l10n,
   );
 });
 

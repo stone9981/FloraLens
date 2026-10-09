@@ -57,14 +57,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _testing = true;
       _testResult = null;
     });
+    final settings = ref.read(settingsProvider);
     final client = ref.read(llmClientProvider);
     final r = await client.testConnection();
     if (!mounted) return;
     setState(() {
       _testing = false;
       _testResult = r.when(
-        ok: (text) =>
-            '${context.l10n.tr('connectionOk')}：${text.length > 20 ? '${text.substring(0, 20)}…' : text}',
+        ok: (_) =>
+            '${context.l10n.tr('connectionOk')}：${context.l10n.tr('modelLabel')} ${settings.llm.model} ${context.l10n.tr('modelAvailable')}',
         err: (e) => '${context.l10n.tr('connectionFailed')}：${e.message}',
       );
     });

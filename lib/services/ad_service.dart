@@ -47,6 +47,7 @@ class AdService {
 
   /// 预加载一张插屏，便于返回首页时即时弹出。
   Future<void> preloadInterstitial() async {
+    if (AdsConfig.screenshotMode) return;
     if (_interstitial != null) return;
     await InterstitialAd.load(
       adUnitId: AdsConfig.interstitialAdUnitId,
@@ -63,6 +64,7 @@ class AdService {
 
   /// 立即展示插屏（若尚未加载则先加载）。无广告可用时静默返回。
   Future<void> showInterstitial() async {
+    if (AdsConfig.screenshotMode) return;
     if (_interstitial == null) {
       await preloadInterstitial();
     }
@@ -102,6 +104,8 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
   @override
   void initState() {
     super.initState();
+    // 截图模式：不创建、不加载任何广告，确保截出的图干净无广告。
+    if (AdsConfig.screenshotMode) return;
     _banner = BannerAd(
       adUnitId: AdsConfig.bannerAdUnitId,
       size: widget.size,
@@ -127,6 +131,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (AdsConfig.screenshotMode) return const SizedBox.shrink();
     final banner = _banner;
     if (!_ready || banner == null) return const SizedBox.shrink();
     return SizedBox(

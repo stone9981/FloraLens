@@ -19,6 +19,13 @@ class AdsConfig {
   /// true=使用 Google 官方测试 ID（开发期安全，不会产生费用）；上线务必改 false。
   static const bool useTestAds = false;
 
+  /// 截图模式（上架 / 宣传图专用）。
+  ///
+  /// true=隐藏全部广告（横幅 / 信息流卡 / 插屏），确保截出来的 App Store 与
+  /// 宣传图干净、无广告占位，也避免把测试广告（Test Ad）截进取店图。
+  /// 正式发布、提交审核前务必改回 false，否则用户将永远看不到广告、影响变现。
+  static const bool screenshotMode = false;
+
   // ---------------------- 生产环境占位 ID（上线替换） ----------------------
 
   /// 生产 App ID（Android）。AdMob 后台每个应用独立分配。

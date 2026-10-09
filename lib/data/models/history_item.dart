@@ -58,11 +58,12 @@ class HistoryItem {
   HistoryItem copyWith({
     PlantProfile? profile,
     String? cardPath,
+    String? imagePath,
   }) {
     return HistoryItem(
       id: id,
       createdAt: createdAt,
-      imagePath: imagePath,
+      imagePath: imagePath ?? this.imagePath,
       candidate: candidate,
       profile: profile ?? this.profile,
       cardPath: cardPath ?? this.cardPath,

@@ -75,9 +75,9 @@ String buildResultMarkdown({
     b.writeln();
   }
 
-  final baikeName = Baike.bestName(candidate, profile);
-  final item = Baike.itemUrl(baikeName).toString();
-  final search = Baike.searchUrl(baikeName).toString();
+  final baikeName = Baike.bestName(candidate, profile, locale: l10n.locale);
+  final item = Baike.itemUrl(baikeName, locale: l10n.locale).toString();
+  final search = Baike.searchUrl(baikeName, locale: l10n.locale).toString();
   b.writeln('## ${l10n.tr('mdFurther')}');
   b.writeln();
   b.writeln('- ${l10n.tr('baikeLink')}：$item');

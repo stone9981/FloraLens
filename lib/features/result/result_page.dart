@@ -99,11 +99,16 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     );
   }
 
-  /// 花名点击：App 内浏览器打开百度百科，看完关闭即回到本页。
+  /// 花名点击：App 内浏览器打开外部百科（中文→百度百科，英文→维基百科），
+  /// 看完关闭即回到本页。
   Future<void> _openBaike(IdentifyState state) async {
     final candidate = state.top;
     if (candidate == null) return;
-    final uri = Baike.itemUrl(Baike.bestName(candidate, state.profile));
+    final uri = Baike.jumpUri(
+      candidate,
+      state.profile,
+      locale: context.l10n.locale,
+    );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.inAppWebView);
       if (!ok && mounted) _toast(context.l10n.tr('cannotOpenBaike'));
@@ -214,15 +219,18 @@ class _Progress extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         const Spacer(),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          child: LocalImage(
-            path: imagePath,
-            width: MediaQuery.of(context).size.width - 72,
-            height: 280,
-            radius: AppTheme.radiusLg,
+        LayoutBuilder(
+          builder: (context, constraints) => ClipRRect(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            child: LocalImage(
+              path: imagePath,
+              width: constraints.maxWidth - 72,
+              height: 280,
+              radius: AppTheme.radiusLg,
+            ),
           ),
         ),
         const SizedBox(height: 28),

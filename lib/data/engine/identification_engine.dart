@@ -42,13 +42,13 @@ class EngineFactory {
     AppSettings settings,
     AppLocalizations l10n,
   ) {
-    final base = _createRaw(settings);
+    final base = _createRaw(settings, l10n);
 
     // 视觉大模型可能「硬编」品种，置信度不够时让专用模型复核一次。
     final fallbackType = settings.effectiveFallbackEngine;
     final fallback = fallbackType == null
         ? null
-        : _createFallback(settings, fallbackType);
+        : _createFallback(settings, fallbackType, l10n);
     if (fallback == null) return base;
 
     return HybridEngine(
@@ -59,7 +59,7 @@ class EngineFactory {
     );
   }
 
-  static IdentificationEngine _createRaw(AppSettings settings) {
+  static IdentificationEngine _createRaw(AppSettings settings, AppLocalizations l10n) {
     switch (settings.engine) {
       case EngineType.plantId:
         return PlantIdEngine(apiKey: settings.plantIdKey);
@@ -74,7 +74,7 @@ class EngineFactory {
         );
       case EngineType.vlm:
         // 视觉模型与文案模型共用端点与 Key，只是模型名不同。
-        return VlmEngine(config: settings.visionLlmConfig);
+        return VlmEngine(config: settings.visionLlmConfig, l10n: l10n);
     }
   }
 
@@ -82,6 +82,7 @@ class EngineFactory {
   static IdentificationEngine? _createFallback(
     AppSettings settings,
     EngineType type,
+    AppLocalizations l10n,
   ) {
     switch (type) {
       case EngineType.plantId:

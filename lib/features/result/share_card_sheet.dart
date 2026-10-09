@@ -61,11 +61,14 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
     }
   }
 
-  /// 花名点击：用 App 内浏览器打开百度百科词条，点关闭即可回到卡片。
+  /// 花名点击：用 App 内浏览器打开外部百科（中文→百度百科，英文→维基百科），
+  /// 点关闭即可回到卡片。
   Future<void> _openBaike() async {
-    final name = Baike.bestName(widget.data.candidate, widget.data.profile);
-    if (name.isEmpty) return;
-    final uri = Baike.itemUrl(name);
+    final uri = Baike.jumpUri(
+      widget.data.candidate,
+      widget.data.profile,
+      locale: context.l10n.locale,
+    );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.inAppWebView);
       if (!ok && mounted) _toast(context.l10n.tr('cannotOpenBaike'));

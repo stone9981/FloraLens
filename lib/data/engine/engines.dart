@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../core/result.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/app_settings.dart';
 import '../models/plant.dart';
 import '../llm/llm_client.dart';
@@ -393,14 +394,15 @@ class KindwiseEngine extends IdentificationEngine with EngineParsing {
 /// 连接信息与文案模型共用（[LlmConfig]），只有模型名不同，
 /// 因此在设置页里叫「识别模型」。
 class VlmEngine extends IdentificationEngine with EngineParsing {
-  VlmEngine({required this.config});
+  VlmEngine({required this.config, required this.l10n});
 
   final LlmConfig config;
+  final AppLocalizations l10n;
 
   @override
   EngineType get type => EngineType.vlm;
 
-  static const String _systemPrompt = '''
+  static const String _systemPromptZh = '''
 你是植物分类学专家，擅长从花卉照片判断物种。你会收到一张植物照片。
 要求：
 1. 结合花期、花色、花型、叶形、株型综合判断，优先给出最可能是观赏植物的答案；
@@ -410,7 +412,17 @@ class VlmEngine extends IdentificationEngine with EngineParsing {
 5. confidence 是 0~1 的小数，代表你的把握程度，不要一律给满分。
 ''';
 
-  static const String _userPrompt = '''
+  static const String _systemPromptEn = '''
+You are a plant taxonomy expert who identifies species from flower photos. You will receive one plant photo.
+Requirements:
+1. Judge by bloom season, flower color, flower shape, leaf shape and growth form together; prefer the most likely ornamental plant.
+2. Give a complete, properly formatted scientific (Latin) name; use the widely used English common name for "commonName".
+3. Output only a single JSON object, no markdown code fences, no explanatory text.
+4. When unsure, give the closest category and lower confidence honestly.
+5. confidence is a 0~1 float representing your certainty; do not always give full marks.
+''';
+
+  static const String _userPromptZh = '''
 请识别这张照片里的植物，输出如下 JSON：
 {
   "candidates": [
@@ -425,6 +437,28 @@ class VlmEngine extends IdentificationEngine with EngineParsing {
 }
 候选最多 6 个，按 confidence 从高到低排列。
 ''';
+
+  static const String _userPromptEn = '''
+Identify the plant in this photo and output the following JSON:
+{
+  "candidates": [
+    {
+      "scientificName": "full Latin name",
+      "commonName": "English common name",
+      "family": "family name",
+      "genus": "genus name",
+      "confidence": 0.87
+    }
+  ]
+}
+Up to 6 candidates, sorted by confidence descending.
+''';
+
+  String get _systemPrompt =>
+      l10n.locale.languageCode == 'en' ? _systemPromptEn : _systemPromptZh;
+
+  String get _userPrompt =>
+      l10n.locale.languageCode == 'en' ? _userPromptEn : _userPromptZh;
 
   @override
   Future<Result<IdentificationResult>> identify(
