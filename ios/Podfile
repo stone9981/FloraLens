@@ -45,6 +45,14 @@ post_install do |installer|
       # "Include of non-modular header inside framework module" 编译错误。
       # 放开该开关以允许这种 include。
       config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      # permission_handler 11+ 在 iOS 上按宏裁剪各权限的真正实现。不定义
+      # PERMISSION_CAMERA 时，Permission.camera.request() 会直接假报
+      # denied/permanentlyDenied：永不弹系统授权框，也不会在
+      # 「设置 → 隐私与安全性 → 相机」里登记本 App。
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+        'PERMISSION_CAMERA=1',
+      ]
     end
   end
 

@@ -142,7 +142,9 @@ class _ShareCardSheetState extends ConsumerState<ShareCardSheet> {
     final width = MediaQuery.of(context).size.width;
     final scale = ((width - 56) / cardWidth).clamp(0.5, 1.15);
     final data = widget.data.copyWith(
-      watermark: _effectiveWatermark(settings.watermark, _locationLabel),
+      watermark: settings.isProActive
+          ? ''
+          : _effectiveWatermark(settings.watermark, _locationLabel),
     );
 
     return SafeArea(

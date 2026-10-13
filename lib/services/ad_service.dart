@@ -27,13 +27,18 @@ class AdService {
   bool get shouldShowInterstitial =>
       _identifyCount > 0 && _identifyCount % 3 == 0;
 
-  Future<void> init() async {
+  /// 初始化广告 SDK。
+  ///
+  /// [requestTracking] 为 true 时才在 iOS 上弹 ATT 追踪授权。
+  /// **Pro 用户不展示广告，不应请求追踪授权**（理由不成立易被 5.1.1 质疑），
+  /// 截图模式下同理——连广告都不展示，没必要申请授权。
+  Future<void> init({bool requestTracking = true}) async {
     if (_initialized) return;
     _initialized = true;
     try {
       await MobileAds.instance.initialize();
       // iOS 14+ 需要 ATT 授权才能投放个性化广告。
-      if (Platform.isIOS) {
+      if (Platform.isIOS && requestTracking && !AdsConfig.screenshotMode) {
         final status =
             await AppTrackingTransparency.trackingAuthorizationStatus;
         if (status == TrackingStatus.notDetermined) {

@@ -32,10 +32,18 @@
 	<string>Used to take photos to identify plants.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to add the capture location (city/district only) to the share-card watermark. Off by default; you can turn it off anytime in Settings.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Used to add the capture location (city/district only) to the share-card watermark. Off by default; you can turn it off anytime in Settings.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Records audio when capturing video (not used for photo-only capture).</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>app-settings</string>
+	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Used to save identification cards to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>用于将识别卡片保存到相册中的 FloraLens 相簿。/ Used to save identification cards into the FloraLens album in your photo library.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Used to show you more relevant ads.</string>
 	<key>SKAdNetworkItems</key>

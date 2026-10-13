@@ -61,8 +61,15 @@
 		</dict>
 	</array>
 	<key>NSPrivacyTracking</key>
-	<false/>
+	<true/>
 	<key>NSPrivacyTrackingDomains</key>
-	<array/>
+	<array>
+		<string>google.com</string>
+		<string>doubleclick.net</string>
+		<string>admob.com</string>
+		<string>googlesyndication.com</string>
+		<string>googleadservices.com</string>
+		<string>google-analytics.com</string>
+	</array>
 </dict>
 </plist>

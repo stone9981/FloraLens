@@ -64,11 +64,15 @@ final adServiceProvider = Provider<AdService>((ref) {
 
 /// 内购服务（苹果 App Store / Google Play）。
 ///
-/// 购买或恢复成功时，把 [AppSettings.isPro] 置真，从而去广告、解锁会员权益。
+/// 购买或恢复成功时，把 [AppSettings.isPro] 置真并写入订阅到期日，
+/// 从而去广告、解锁会员权益；订阅过期时回落为免费。
 final iapServiceProvider = Provider<IapService>((ref) {
   final svc = IapService(
-    onProUnlocked: () {
-      ref.read(settingsProvider.notifier).setPro(true);
+    onProUnlocked: ({DateTime? expiry}) {
+      ref.read(settingsProvider.notifier).setPro(true, expiry: expiry);
+    },
+    onProExpired: () {
+      ref.read(settingsProvider.notifier).setPro(false);
     },
   );
   ref.onDispose(() => svc.dispose());

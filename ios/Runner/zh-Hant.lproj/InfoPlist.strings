@@ -1,0 +1,7 @@
+/* 隱私用途描述 — 繁體中文 (zh-Hant) */
+"NSCameraUsageDescription" = "用於拍照識別植物";
+"NSLocationWhenInUseUsageDescription" = "用於把拍攝地點（僅到市／區）寫進分享卡片浮水印，預設關閉，可隨時在設定裡關閉。";
+"NSMicrophoneUsageDescription" = "錄製影片時收錄聲音（僅拍照時不使用）";
+"NSPhotoLibraryAddUsageDescription" = "用於儲存識別卡片到相簿";
+"NSPhotoLibraryUsageDescription" = "用於將識別卡片儲存到相簿中的 FloraLens 相簿";
+"NSUserTrackingUsageDescription" = "用於向您顯示更相關的廣告";

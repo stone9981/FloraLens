@@ -49,9 +49,11 @@ class _FloraLensAppState extends ConsumerState<FloraLensApp> {
     super.initState();
     // 预热设置，避免首帧读取磁盘造成抖动。
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(settingsProvider);
+      final settings = ref.read(settingsProvider);
       // 初始化广告与内购（懒加载 provider，首次读取即创建并触发 init）。
-      ref.read(adServiceProvider).init();
+      // 只有非 Pro 用户才请求 ATT 追踪授权：Pro 不展示广告，
+      // 对其弹「允许跟踪」属于理由不成立的权限申请，易被 5.1.1 质疑。
+      ref.read(adServiceProvider).init(requestTracking: !settings.isProActive);
       ref.read(iapServiceProvider).init();
     });
   }

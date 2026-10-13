@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -46,11 +47,13 @@ class _CapturePageState extends ConsumerState<CapturePage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
-      controller.dispose();
+      // 离开 app（如跳到系统设置页）时释放相机，避免长期占用。
+      _controller?.dispose();
     } else if (state == AppLifecycleState.resumed) {
+      // 回到 app（含从系统设置开启相机权限后返回）必须重新检查权限并初始化。
+      // 不能因 controller 已被 dispose 就跳过，否则会永远停在「永久拒绝」界面、
+      // 相机预览无法恢复。
       _init();
     }
   }
@@ -207,8 +210,45 @@ class _CapturePageState extends ConsumerState<CapturePage>
               const SizedBox(height: 20),
               if (_permanentlyDenied)
                 OutlinedButton.icon(
-                  onPressed: () async {
-                    await openAppSettings();
+                  onPressed: () {
+                    // 同步先弹手动路径弹窗：保证「点了必有可见反馈」，绝不静默无响应。
+                    // 弹窗内的「打开系统设置」按钮再走最可靠的原生通道尝试自动跳转。
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(context.l10n.tr('openSettingsManualTitle')),
+                        content: Text(context.l10n.tr('openSettingsManualBody')),
+                        actions: <Widget>[
+                          TextButton(
+                            onPressed: () async {
+                              Navigator.of(ctx).pop();
+                              print('[dart] openSystemSettings tapped '
+                                  '(permanentlyDenied=$_permanentlyDenied)');
+                              // 1) 原生 MethodChannel（真机最可靠）：UIApplication.openSettingsURLString
+                              try {
+                                await const MethodChannel('com.floralens/native')
+                                    .invokeMethod<void>('openAppSettings');
+                                print('[dart] native openAppSettings invoked');
+                              } catch (e) {
+                                print('[dart] native openAppSettings FAILED: $e');
+                              }
+                              // 2) 退一步：permission_handler 官方跳转
+                              try {
+                                await openAppSettings();
+                                print('[dart] openAppSettings(ph) invoked');
+                              } catch (e) {
+                                print('[dart] openAppSettings(ph) FAILED: $e');
+                              }
+                            },
+                            child: Text(context.l10n.tr('openSystemSettings')),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            child: Text(context.l10n.tr('ok')),
+                          ),
+                        ],
+                      ),
+                    );
                     // 从系统设置返回后会由 AppLifecycleState.resumed 触发 _init 重新检查权限。
                   },
                   icon: const Icon(Icons.settings_outlined),
@@ -271,8 +311,14 @@ class _CapturePageState extends ConsumerState<CapturePage>
                     color: Colors.white,
                   ),
                 ),
+              // iOS 没有独立的「手电筒」权限：手电筒 = 相机预览的闪光灯模式，
+              // 必须相机权限已允许且预览正在运行才能用。相机未就绪时置灰，
+              // 避免用户误以为在申请一个不存在的权限。
               IconButton(
-                onPressed: _toggleFlash,
+                onPressed:
+                    (_controller != null && _controller!.value.isInitialized)
+                        ? _toggleFlash
+                        : null,
                 icon: Icon(
                   _flashOn
                       ? Icons.flashlight_on

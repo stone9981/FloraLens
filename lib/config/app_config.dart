@@ -95,6 +95,16 @@ class IapProducts {
   /// 全部商品 ID，供 [queryProductDetails] 查询。
   static const List<String> all = <String>[proMonthly, proYearly, removeAds];
 
-  /// 订阅类商品走 buyNonConsumable（续期由系统托管）。
+  /// 是否为自动续期订阅（月付 / 年付）。
+  ///
+  /// 用于判断到期周期（见 [subscriptionDays]）。注意：当前 SDK 版本订阅与非消耗型
+  /// 都走 [InAppPurchase.buyNonConsumable]，是否订阅由商店后台商品类型决定，
+  /// 不由该标记决定购买调用。
   static bool isSubscription(String id) => id == proMonthly || id == proYearly;
+
+  /// 订阅周期对应的近似天数，用于客户端推算到期日（monthly≈30 天、yearly≈365 天）。
+  ///
+  /// 注意：这是客户端轻量级近似，真实到期日以 App Store / Play 服务端收据为准；
+  /// 生产环境应做服务端收据校验（见 [IapService] 说明），此处仅作兜底展示与本地权益回落。
+  static int subscriptionDays(String id) => id == proYearly ? 365 : 30;
 }

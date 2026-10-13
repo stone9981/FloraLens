@@ -45,7 +45,7 @@ class _HomePageState extends ConsumerState<HomePage> with RouteAware {
   @override
   void didPopNext() {
     final settings = ref.read(settingsProvider);
-    if (!settings.isPro) {
+    if (!settings.isProActive) {
       ref.read(adServiceProvider).showInterstitial();
     }
   }
@@ -95,7 +95,7 @@ class _HomePageState extends ConsumerState<HomePage> with RouteAware {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// 未配置引擎时，直接弹付费墙引导开通 Pro（免配置即拍即识）。
+  /// 未配置引擎时，直接弹付费墙引导开通 Pro（去除广告与水印）。
   Future<void> _openPaywall() async {
     if (!mounted) return;
     await showModalBottomSheet<void>(
@@ -113,43 +113,49 @@ class _HomePageState extends ConsumerState<HomePage> with RouteAware {
 
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => ref.read(historyProvider.notifier).refresh(),
-          child: CustomScrollView(
-            slivers: <Widget>[
-              SliverToBoxAdapter(child: _buildHeader(settings)),
-              SliverToBoxAdapter(child: _buildActions()),
-              const SliverToBoxAdapter(child: SizedBox(height: 26)),
-              SliverToBoxAdapter(child: _buildStatusCard(settings)),
-              const SliverToBoxAdapter(child: SizedBox(height: 26)),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverToBoxAdapter(
-                  child: SectionTitle(
-                    context.l10n.tr('recentTitle'),
-                    trailing: Text(
-                      context.l10n.tr('all'),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
+        child: Center(
+          child: ConstrainedBox(
+            // iPad / 大屏：内容居中并限制最大宽度，避免被拉伸得过于稀疏
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: RefreshIndicator(
+              onRefresh: () => ref.read(historyProvider.notifier).refresh(),
+              child: CustomScrollView(
+                slivers: <Widget>[
+                  SliverToBoxAdapter(child: _buildHeader(settings)),
+                  SliverToBoxAdapter(child: _buildActions()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 26)),
+                  SliverToBoxAdapter(child: _buildStatusCard(settings)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 26)),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverToBoxAdapter(
+                      child: SectionTitle(
+                        context.l10n.tr('recentTitle'),
+                        trailing: Text(
+                          context.l10n.tr('all'),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onTap: () =>
+                            Navigator.of(context).pushNamed(AppRoutes.history),
                       ),
                     ),
-                    onTap: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.history),
                   ),
-                ),
+                  _buildRecent(history),
+                  if (!settings.isProActive)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: AdBannerWidget(),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                ],
               ),
-              _buildRecent(history),
-              if (!settings.isPro)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: AdBannerWidget(),
-                  ),
-                ),
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
-            ],
+            ),
           ),
         ),
       ),
@@ -381,14 +387,17 @@ class _HomePageState extends ConsumerState<HomePage> with RouteAware {
             ),
             if (!engineOk || !llmOk) ...<Widget>[
               const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _openPaywall,
-                  icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-                  label: Text(context.l10n.tr('goProCta')),
+              // 已开通 Pro 后不再展示「去开通」按钮，仅保留「去配置」入口；
+              // 因为 Pro 不会自动配置引擎（BYOK 架构），仍需用户自备 Key。
+              if (!settings.isProActive)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _openPaywall,
+                    icon: const Icon(Icons.rocket_launch_rounded, size: 18),
+                    label: Text(context.l10n.tr('goProCta')),
+                  ),
                 ),
-              ),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,

@@ -70,6 +70,7 @@ class SettingsController extends StateNotifier<AppSettings> {
     bool? onboarded,
     String? language,
     bool? isPro,
+    int? proExpiryMillis,
   }) async {
     state = state.copyWith(
       engine: engine,
@@ -94,6 +95,7 @@ class SettingsController extends StateNotifier<AppSettings> {
       onboarded: onboarded,
       language: language,
       isPro: isPro,
+      proExpiryMillis: proExpiryMillis,
     );
     await _persist();
   }
@@ -126,7 +128,13 @@ class SettingsController extends StateNotifier<AppSettings> {
   Future<void> setLanguage(String language) => patch(language: language);
 
   /// 由内购解锁/恢复后写回 Pro 状态。
-  Future<void> setPro(bool value) => patch(isPro: value);
+  ///
+  /// [expiry] 为订阅到期时间戳（毫秒）；传 null 表示永久有效（非消耗型「去广告」）。
+  /// 关闭 Pro（[value]=false）时到期日一并清空。
+  Future<void> setPro(bool value, {DateTime? expiry}) => patch(
+        isPro: value,
+        proExpiryMillis: value ? expiry?.millisecondsSinceEpoch : null,
+      );
 
   Future<void> completeOnboarding() => patch(onboarded: true);
 

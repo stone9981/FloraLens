@@ -45,7 +45,8 @@ class Baike {
     return candidate.scientificName;
   }
 
-  /// 实际跳转链接：英文优先 [PlantCandidate.wikiUrl]，中文走百度百科。
+  /// 实际跳转链接：英文优先 [PlantCandidate.wikiUrl]（维基百科），
+  /// 繁体中文走中文维基百科（zh.wikipedia.org），简体中文走百度百科。
   static Uri jumpUri(
     PlantCandidate candidate,
     PlantProfile? profile, {
@@ -64,11 +65,20 @@ class Baike {
   /// 若先 [Uri.encodeComponent] 再传入，会把已编码的 `%` 再次编码成 `%25`，
   /// 导致链接变成 `%25E9%25BE...` 这种双重编码、百科无法识别。
   /// 因此这里直接传原始名，由 Uri 统一编码一次即可（中文用户即为 %E9%BE...）。
+  ///
+  /// 链接随界面语言切换：
+  /// - 英文（en）：维基百科 en.wikipedia.org，优先用识别引擎已返回的精确链接；
+  /// - 繁体中文（zh-Hant）：中文维基百科 zh.wikipedia.org；
+  /// - 简体中文（zh）：百度百科（中文俗名命中率最高、最稳）。
   static Uri itemUrl(String name, {Locale? locale}) {
     final n = cleanName(name);
     if (_isEnglish(locale)) {
       final title = n.replaceAll(' ', '_');
       return Uri.https('en.wikipedia.org', '/wiki/$title');
+    }
+    if (locale?.scriptCode == 'Hant') {
+      final title = n.replaceAll(' ', '_');
+      return Uri.https('zh.wikipedia.org', '/wiki/$title');
     }
     return Uri.https(
       'baike.baidu.com',
@@ -82,6 +92,10 @@ class Baike {
     final n = cleanName(name);
     if (_isEnglish(locale)) {
       return Uri.https('en.wikipedia.org', '/wiki/Special:Search',
+          <String, String>{'search': n});
+    }
+    if (locale?.scriptCode == 'Hant') {
+      return Uri.https('zh.wikipedia.org', '/wiki/Special:Search',
           <String, String>{'search': n});
     }
     return Uri.https(

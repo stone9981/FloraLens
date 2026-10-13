@@ -113,6 +113,13 @@ Widget buildShareCard(
 String _formatDate(DateTime d) =>
     '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
 
+/// 卡片底部的「水印 · 日期」文案。水印为空（Pro 去水印）时只显示日期，
+/// 避免出现多余的「 · 」分隔符。
+String _footer(String watermark, DateTime date) {
+  final dateStr = _formatDate(date);
+  return watermark.isEmpty ? dateStr : '$watermark · $dateStr';
+}
+
 Widget _photo(
   ShareCardData data, {
   double height = 360,
@@ -376,7 +383,7 @@ class _MinimalCard extends StatelessWidget {
           Container(height: 1, width: 44, color: const Color(0xFFDDE3E0)),
           const SizedBox(height: 12),
           Text(
-            '${data.watermark} · ${_formatDate(data.date)}',
+            _footer(data.watermark, data.date),
             style: const TextStyle(fontSize: 10.5, color: Color(0xFFA8B1AC)),
           ),
         ],

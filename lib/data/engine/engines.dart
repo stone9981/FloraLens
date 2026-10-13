@@ -422,6 +422,16 @@ Requirements:
 5. confidence is a 0~1 float representing your certainty; do not always give full marks.
 ''';
 
+  static const String _systemPromptZhHant = '''
+你是植物分類學專家，擅長從花卉照片判斷物種。你會收到一張植物照片。
+要求：
+1. 結合花期、花色、花型、葉形、株型綜合判斷，優先給出最可能是觀賞植物的答案；
+2. 拉丁學名要完整規範，中文名使用台港通用俗稱；
+3. 只輸出一個 JSON 物件，不要用 markdown 程式碼塊包裹，不要輸出任何解釋性文字；
+4. 分辨不清時給出最接近的類別，並如實調低 confidence；
+5. confidence 是 0~1 的小數，代表你的把握程度，不要一律給滿分。
+''';
+
   static const String _userPromptZh = '''
 请识别这张照片里的植物，输出如下 JSON：
 {
@@ -454,11 +464,33 @@ Identify the plant in this photo and output the following JSON:
 Up to 6 candidates, sorted by confidence descending.
 ''';
 
-  String get _systemPrompt =>
-      l10n.locale.languageCode == 'en' ? _systemPromptEn : _systemPromptZh;
+  static const String _userPromptZhHant = '''
+請辨識這張照片裡的植物，輸出如下 JSON：
+{
+  "candidates": [
+    {
+      "scientificName": "完整的拉丁學名",
+      "commonName": "中文名",
+      "family": "科名",
+      "genus": "屬名",
+      "confidence": 0.87
+    }
+  ]
+}
+候選最多 6 個，按 confidence 從高到低排列。
+''';
 
-  String get _userPrompt =>
-      l10n.locale.languageCode == 'en' ? _userPromptEn : _userPromptZh;
+  String get _systemPrompt {
+    if (l10n.locale.languageCode == 'en') return _systemPromptEn;
+    if (l10n.locale.scriptCode == 'Hant') return _systemPromptZhHant;
+    return _systemPromptZh;
+  }
+
+  String get _userPrompt {
+    if (l10n.locale.languageCode == 'en') return _userPromptEn;
+    if (l10n.locale.scriptCode == 'Hant') return _userPromptZhHant;
+    return _userPromptZh;
+  }
 
   @override
   Future<Result<IdentificationResult>> identify(

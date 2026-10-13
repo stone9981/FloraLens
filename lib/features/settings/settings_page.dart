@@ -254,9 +254,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.tr('settingsTitle'))),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-          children: <Widget>[
+        child: Center(
+          child: ConstrainedBox(
+            // iPad / 大屏：内容居中并限制最大宽度
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+              children: <Widget>[
             _buildProSection(settings, controller),
             const SizedBox(height: 26),
             SectionTitle(context.l10n.tr('recognitionSection')),
@@ -280,7 +284,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             SectionTitle(context.l10n.tr('aboutSection')),
             _buildAbout(),
           ],
+          ),
         ),
+      ),
       ),
     );
   }
@@ -290,7 +296,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildProSection(AppSettings settings, SettingsController controller) {
     final scheme = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final isPro = settings.isPro;
+    final isPro = settings.isProActive;
 
     return SoftCard(
       padding: const EdgeInsets.all(14),
@@ -305,14 +311,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text(
-                l10n.tr('proSection'),
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+              // 标题用 Expanded + 省略，防止小屏（6s 显示放大 320pt）或大字体下
+              // 与右侧长徽章（如「FloraLens Pro 已开通」）挤爆导致 RenderFlex 溢出。
+              Expanded(
+                child: Text(
+                  l10n.tr('proSection'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
@@ -606,6 +618,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 12),
           DropdownButtonFormField<HybridFallbackSource>(
             initialValue: source,
+            // 同上：isExpanded:true 防止大字体下选中文字+箭头向右溢出。
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: context.l10n.tr('hybridSourceLabel'),
             ),
@@ -615,6 +629,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     value: s,
                     child: Text(
                       context.l10n.hybrid(s.id),
+                      maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 13.5),
                     ),
@@ -674,6 +690,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: llm.presetId,
+            // 必须展开占满整行：默认 isExpanded:false 时内部 Row 按选中文字的
+            // 自然宽度排版，文字不受约束、ellipsis 不生效，系统大字体下
+            // 「选中文字 + 下拉箭头」会向右溢出（6s 上曾溢出 11px）。
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: context.l10n.tr('providerLabel'),
             ),
@@ -683,6 +703,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     value: p.id,
                     child: Text(
                       context.l10n.tr('presetName_${p.id}'),
+                      // maxLines:1 + softWrap:false 才能触发单行省略；漏掉会换行撑高按钮。
+                      maxLines: 1,
+                      softWrap: false,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 14),
                     ),

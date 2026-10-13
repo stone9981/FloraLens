@@ -417,23 +417,39 @@ Requirements:
 5. Quotations or poems must be real and truly about the plant; otherwise leave empty.
 ''';
 
-  String get _systemPrompt =>
-      l10n.locale.languageCode == 'en' ? _systemPromptEn : _systemPromptZh;
+  static const String _systemPromptZhHant = '''
+你是一位資深植物學家兼中文科普作家，正在為一款識花 App 撰寫條目。
+要求：
+1. 內容準確、克制、優雅，避免過度行銷口吻；
+2. 面向繁體中文讀者，使用台港通用的植物俗名；
+3. 必須只輸出一個 JSON 物件，不要使用 markdown 程式碼塊包裹，不要輸出任何解釋性文字；
+4. 所有欄位都能填就填，實在沒有把握的欄位留空字串，不要編造具體數字；
+5. 古詩詞必須真實存在且確實描寫該植物，找不到就留空。
+''';
+
+  String get _systemPrompt {
+    if (l10n.locale.languageCode == 'en') return _systemPromptEn;
+    if (l10n.locale.scriptCode == 'Hant') return _systemPromptZhHant;
+    return _systemPromptZh;
+  }
 
   String _userPrompt(PlantCandidate c) {
     final isEn = l10n.locale.languageCode == 'en';
+    final isHant = l10n.locale.scriptCode == 'Hant';
     final known = <String>[
-      isEn ? 'Latin name: ${c.scientificName}' : '拉丁学名：${c.scientificName}',
+      if (isEn) 'Latin name: ${c.scientificName}' else '拉丁學名：${c.scientificName}',
       if (c.commonName.isNotEmpty)
-        isEn ? 'Common name: ${c.commonName}' : '中文名：${c.commonName}',
+        if (isEn) 'Common name: ${c.commonName}' else '中文名：${c.commonName}',
       if (c.familyGenus.isNotEmpty)
-        isEn
-            ? 'Family & genus: ${c.familyGenus}'
-            : '科属：${c.familyGenus}',
+        if (isEn)
+          'Family & genus: ${c.familyGenus}'
+        else
+          '科屬：${c.familyGenus}',
       if (c.aliases.isNotEmpty)
-        isEn
-            ? 'Aliases: ${c.aliases.join(', ')}'
-            : '别名：${c.aliases.join('、')}',
+        if (isEn)
+          'Aliases: ${c.aliases.join(', ')}'
+        else
+          '別名：${c.aliases.join('、')}',
     ].join('\n');
 
     if (isEn) {
@@ -454,6 +470,28 @@ Output the following JSON:
   "tags": ["tag 1", "tag 2", "tag 3"],
   "toxicityNote": "toxicity note; if non-toxic write \\"Non-toxic\\"",
   "poemLine": "a real line of poetry or cultural quote about the plant"
+}
+''';
+    }
+
+    if (isHant) {
+      return '''
+已知植物資訊：
+$known
+
+請輸出如下 JSON 結構：
+{
+  "latinName": "完整的拉丁學名（含命名人可省略）",
+  "title": "最地道的中文名",
+  "summary": "不超過 30 字的一句話科普，抓最具辨識度的特徵",
+  "story": "110~160 字的植物誌介紹，講清形態特徵、分佈環境或一個有趣的冷知識",
+  "language": "花語，不超過 20 字",
+  "bloomTime": "花期，如 4-6 月",
+  "origin": "原產地與主要分佈",
+  "careTips": ["養護要點 1", "養護要點 2", "養護要點 3"],
+  "tags": ["標籤 1", "標籤 2", "標籤 3"],
+  "toxicityNote": "毒性提示，確認無毒則寫「無毒」",
+  "poemLine": "描寫該植物的一句中國古詩詞"
 }
 ''';
     }

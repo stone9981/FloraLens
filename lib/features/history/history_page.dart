@@ -165,7 +165,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                 scientificName: item.candidate.scientificName,
                 title: item.candidate.displayName,
               ),
-          watermark: settings.watermark,
+          watermark: settings.effectiveWatermark,
           date: item.createdAt,
         ),
       ),
@@ -227,8 +227,12 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: <Widget>[
+        child: Center(
+          child: ConstrainedBox(
+            // iPad / 大屏：限制最大宽度，网格随宽度自适应列数
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Column(
+              children: <Widget>[
             Expanded(
               child: history.when(
                 loading: () => const Center(
@@ -243,19 +247,23 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       icon: Icons.photo_album_outlined,
                     );
                   }
-                  return RefreshIndicator(
-                    onRefresh: () =>
-                        ref.read(historyProvider.notifier).refresh(),
-                    child: GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 0.78,
-                          ),
-                      itemCount: data.length,
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final w = constraints.maxWidth;
+                      final cols = w >= 900 ? 4 : w >= 600 ? 3 : 2;
+                      return RefreshIndicator(
+                        onRefresh: () =>
+                            ref.read(historyProvider.notifier).refresh(),
+                        child: GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: cols,
+                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 12,
+                                childAspectRatio: 0.78,
+                              ),
+                          itemCount: data.length,
                       itemBuilder: (context, index) {
                         final item = data[index];
                         final selected =
@@ -282,17 +290,21 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                         );
                       },
                     ),
+                      );
+                    },
                   );
                 },
               ),
             ),
-            if (!settings.isPro)
+            if (!settings.isProActive)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 10),
                 child: AdBannerWidget(),
               ),
           ],
+          ),
         ),
+      ),
       ),
     );
   }

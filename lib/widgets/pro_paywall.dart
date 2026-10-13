@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import '../config/app_config.dart';
 import '../data/local/settings_store.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/app_providers.dart';
@@ -51,32 +52,28 @@ class ProPaywallSheet extends ConsumerStatefulWidget {
 class _ProPaywallSheetState extends ConsumerState<ProPaywallSheet> {
   bool _busy = false;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listen(settingsProvider, (prev, next) {
-        if (next.isPro && mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
-      });
-    });
-  }
-
   Future<void> _buy(ProductDetails product) async {
     if (_busy) return;
     setState(() => _busy = true);
     final ok = await ref.read(iapServiceProvider).buy(product);
     if (!mounted) return;
     setState(() => _busy = false);
-    if (!ok && mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.tr('purchaseFailed', const <String>[''])),
-        ),
-      );
+    if (ok) {
+      // 购买流程已发起；若沙盒即时回调已解锁，主动关闭付费墙（主路径仍靠
+      // build 里的 ref.listen 在 isProActive 变真时关闭）。
+      if (ref.read(settingsProvider).isProActive &&
+          Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      return;
     }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.tr('purchaseFailed', const <String>[''])),
+      ),
+    );
   }
 
   Future<void> _restore() async {
@@ -92,6 +89,15 @@ class _ProPaywallSheetState extends ConsumerState<ProPaywallSheet> {
     final l10n = context.l10n;
     final iap = ref.watch(iapServiceProvider);
     final products = iap.products;
+
+    // ref.listen 只允许在 build 中调用（Riverpod 自动管理监听生命周期）。
+    // 放在 initState/postFrameCallback 里会抛
+    // "ref.listen can only be used within the build method of a ConsumerWidget"。
+    ref.listen(settingsProvider, (prev, next) {
+      if (next.isProActive && mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
 
     return Container(
       decoration: BoxDecoration(
@@ -149,7 +155,48 @@ class _ProPaywallSheetState extends ConsumerState<ProPaywallSheet> {
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: _busy ? null : () => _buy(p),
-                        child: Text('${l10n.tr('subscribe')} · ${p.price}'),
+                        style: FilledButton.styleFrom(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 13,
+                          ),
+                        ),
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    p.title,
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    IapProducts.isSubscription(p.id)
+                                        ? l10n.tr('subscribe')
+                                        : l10n.tr('buyOnce'),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              p.price,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

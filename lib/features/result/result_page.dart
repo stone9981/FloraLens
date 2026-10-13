@@ -77,7 +77,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                 scientificName: candidate.scientificName,
                 title: candidate.displayName,
               ),
-          watermark: settings.watermark,
+          watermark: settings.effectiveWatermark,
           date: DateTime.now(),
         ),
       ),
@@ -191,7 +191,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           IdentifyPhase.success => _Success(
             state: state,
             imagePath: imagePath,
-            isPro: ref.watch(settingsProvider).isPro,
+            isPro: ref.watch(settingsProvider).isProActive,
             onCard: () => _openCard(state),
             onNameTap: () => _openBaike(state),
             onRegenerate: () =>
@@ -321,133 +321,183 @@ class _Success extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottom = _BottomBar(
+      onCard: onCard,
+      onRegenerate: onRegenerate,
+      onManual: onManual,
+    );
+
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        // 横屏（iPad / 大屏）：左侧大图、右侧档案，双栏铺满。
+        if (orientation == Orientation.landscape) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(
+                flex: 5,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    child: LocalImage(
+                      path: imagePath,
+                      width: double.infinity,
+                      height: double.infinity,
+                      radius: AppTheme.radiusLg,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 6,
+                child: Column(
+                  children: <Widget>[
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                        children: _contentList(context),
+                      ),
+                    ),
+                    bottom,
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        // 竖屏：图片在上、档案在下滚动，底部固定操作栏。
+        return Column(
+          children: <Widget>[
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                children: <Widget>[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    child: LocalImage(
+                      path: imagePath,
+                      height: 250,
+                      width: double.infinity,
+                      radius: AppTheme.radiusLg,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  ..._contentList(context),
+                ],
+              ),
+            ),
+            bottom,
+          ],
+        );
+      },
+    );
+  }
+
+  /// 结果卡片下方滚动区的内容（不含顶部大图，便于横屏双栏复用）。
+  List<Widget> _contentList(BuildContext context) {
     final candidate = state.top as PlantCandidate;
     final profile = state.profile;
     final result = state.result;
     final note = result?.fallbackNote;
     final revalidated = result?.wasRevalidated ?? false;
 
-    return Column(
-      children: <Widget>[
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            children: <Widget>[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                child: LocalImage(
-                  path: imagePath,
-                  height: 250,
-                  width: double.infinity,
-                  radius: AppTheme.radiusLg,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _TitleBlock(
-                candidate: candidate,
-                profile: profile,
-                onNameTap: onNameTap,
-              ),
-              const SizedBox(height: 14),
-              _MetaRow(candidate: candidate, profile: profile),
-              if (state.profileFromCache)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: TagChip(
-                    context.l10n.tr('offlineData'),
-                    icon: Icons.cloud_off_outlined,
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: TagChip(
-                  context.l10n.tr('savedToRecords', <String>[
-                    context.l10n.source(state.source.id),
-                  ]),
-                  icon: Icons.bookmark_outline_rounded,
-                ),
-              ),
-              if (note != null && note.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 12),
-                _FallbackBanner(
-                  note: note,
-                  revalidated: revalidated,
-                  confirmedLabel: result?.confirmedBy != null
-                      ? context.l10n.engine(result!.confirmedBy!.id)
-                      : null,
-                  uncertain: candidate.confidencePercent < 60,
-                ),
-              ],
-              if (profile != null && profile.summary.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 18),
-                SectionTitle(context.l10n.tr('storyLabel')),
-                Text(
-                  profile.story.isNotEmpty ? profile.story : profile.summary,
-                  style: const TextStyle(fontSize: 14, height: 1.85),
-                ),
-              ],
-              if (profile != null && profile.careTips.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 18),
-                SectionTitle(context.l10n.tr('careLabel')),
-                ...profile.careTips.map(
-                  (tip) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Icon(
-                            Icons.circle,
-                            size: 5,
-                            color: AppTheme.brandGreen,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            tip,
-                            style: const TextStyle(fontSize: 13.5, height: 1.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              if (profile != null && profile.tags.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: profile.tags.map((t) => TagChip(t)).toList(),
-                ),
-              ],
-              if (state.result != null &&
-                  state.result!.candidates.length > 1) ...<Widget>[
-                const SizedBox(height: 20),
-                SectionTitle(context.l10n.tr('similarLabel')),
-                _SimilarList(
-                  candidates: state.result!.candidates.skip(1).take(4).toList(),
-                ),
-              ],
-              // Pro 用户不展示广告；免费用户结果内容后插一张广告卡。
-              if (!isPro)
-                const Padding(
-                  padding: EdgeInsets.only(top: 18),
-                  child: AdInlineCard(),
-                ),
-              const SizedBox(height: 20),
-            ],
+    return <Widget>[
+      _TitleBlock(
+        candidate: candidate,
+        profile: profile,
+        onNameTap: onNameTap,
+      ),
+      const SizedBox(height: 14),
+      _MetaRow(candidate: candidate, profile: profile),
+      if (state.profileFromCache)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: TagChip(
+            context.l10n.tr('offlineData'),
+            icon: Icons.cloud_off_outlined,
           ),
         ),
-        _BottomBar(
-          onCard: onCard,
-          onRegenerate: onRegenerate,
-          onManual: onManual,
+      Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: TagChip(
+          context.l10n.tr('savedToRecords', <String>[
+            context.l10n.source(state.source.id),
+          ]),
+          icon: Icons.bookmark_outline_rounded,
+        ),
+      ),
+      if (note != null && note.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 12),
+        _FallbackBanner(
+          note: note,
+          revalidated: revalidated,
+          confirmedLabel: result?.confirmedBy != null
+              ? context.l10n.engine(result!.confirmedBy!.id)
+              : null,
+          uncertain: candidate.confidencePercent < 60,
         ),
       ],
-    );
+      if (profile != null && profile.summary.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 18),
+        SectionTitle(context.l10n.tr('storyLabel')),
+        Text(
+          profile.story.isNotEmpty ? profile.story : profile.summary,
+          style: const TextStyle(fontSize: 14, height: 1.85),
+        ),
+      ],
+      if (profile != null && profile.careTips.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 18),
+        SectionTitle(context.l10n.tr('careLabel')),
+        ...profile.careTips.map(
+          (tip) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Icon(
+                    Icons.circle,
+                    size: 5,
+                    color: AppTheme.brandGreen,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    tip,
+                    style: const TextStyle(fontSize: 13.5, height: 1.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+      if (profile != null && profile.tags.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: profile.tags.map((t) => TagChip(t)).toList(),
+        ),
+      ],
+      if (state.result != null && state.result!.candidates.length > 1) ...<Widget>[
+        const SizedBox(height: 20),
+        SectionTitle(context.l10n.tr('similarLabel')),
+        _SimilarList(
+          candidates: state.result!.candidates.skip(1).take(4).toList(),
+        ),
+      ],
+      // Pro 用户不展示广告；免费用户结果内容后插一张广告卡。
+      if (!isPro)
+        const Padding(
+          padding: EdgeInsets.only(top: 18),
+          child: AdInlineCard(),
+        ),
+      const SizedBox(height: 20),
+    ];
   }
 }
 

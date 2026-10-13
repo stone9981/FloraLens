@@ -10,6 +10,7 @@ import 'plant.dart';
 enum AppLanguage {
   system('system'),
   zh('zh'),
+  zhHant('zh-Hant'),
   en('en');
 
   const AppLanguage(this.id);
@@ -19,6 +20,8 @@ enum AppLanguage {
   /// 用于 [MaterialApp.locale] 的实际 Locale；system 返回 null 让 Flutter 跟随设备。
   Locale? get locale => switch (this) {
     AppLanguage.zh => const Locale('zh'),
+    AppLanguage.zhHant =>
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
     AppLanguage.en => const Locale('en'),
     AppLanguage.system => null,
   };
@@ -322,6 +325,7 @@ class AppSettings {
     this.onboarded = false,
     this.language = 'system',
     this.isPro = false,
+    this.proExpiryMillis,
   });
 
   final EngineType engine;
@@ -360,9 +364,30 @@ class AppSettings {
 
   /// 是否已开通 FloraLens Pro 会员。
   ///
-  /// Pro 会员享有：托管识别引擎（免配置）、去除广告、无水印高清卡片等权益。
+  /// Pro 会员享有：去除广告、无水印高清卡片、更详细植物档案等权益。
   /// 由内购（[IapService]）解锁后写盘，进程重启不丢。
   final bool isPro;
+
+  /// 订阅到期时间（毫秒时间戳）。仅订阅类商品有意义：
+  /// null 表示「永久有效」（如非消耗型「去广告」），或尚未购买。
+  /// 由 [IapService] 写入；生产环境建议由服务端收据校验结果回写，覆盖客户端近似值。
+  final int? proExpiryMillis;
+
+  /// 当前 Pro 权益是否真正有效（含订阅有效期判断）。
+  ///
+  /// 已开通且无到期日 → true；已开通但当前时间晚于 [proExpiryMillis] → false
+  /// （订阅过期，UI 据此自动回落为免费：恢复广告、重新加水印）。
+  /// 所有读 Pro 状态的地方都应使用本 getter，而非裸 [isPro]。
+  bool get isProActive {
+    if (!isPro) return false;
+    if (proExpiryMillis == null) return true;
+    return DateTime.fromMillisecondsSinceEpoch(proExpiryMillis!)
+        .isAfter(DateTime.now());
+  }
+
+  /// 分享卡片实际显示的水印：Pro（且订阅有效）用户去水印，返回空串；
+  /// 否则返回用户自定的 [watermark]。
+  String get effectiveWatermark => isProActive ? '' : watermark;
 
   /// 当前所选引擎是否具备可用凭据。
   bool get engineReady {
@@ -475,6 +500,7 @@ class AppSettings {
     bool? onboarded,
     String? language,
     bool? isPro,
+    int? proExpiryMillis,
   }) {
     return AppSettings(
       engine: engine ?? this.engine,
@@ -501,6 +527,7 @@ class AppSettings {
       onboarded: onboarded ?? this.onboarded,
       language: language ?? this.language,
       isPro: isPro ?? this.isPro,
+      proExpiryMillis: proExpiryMillis ?? this.proExpiryMillis,
     );
   }
 
@@ -554,6 +581,7 @@ class AppSettings {
     onboarded: (json['onboarded'] as bool?) ?? false,
     language: (json['language'] as String?) ?? 'system',
     isPro: (json['isPro'] as bool?) ?? false,
+    proExpiryMillis: json['proExpiryMillis'] as int?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -579,5 +607,6 @@ class AppSettings {
     'onboarded': onboarded,
     'language': language,
     'isPro': isPro,
+    'proExpiryMillis': proExpiryMillis,
   };
 }
